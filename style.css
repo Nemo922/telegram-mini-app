@@ -7,7 +7,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     color: #ffffff;
     overflow-x: hidden;
     user-select: none;
@@ -23,7 +23,7 @@ body {
 /* Header */
 .header {
     padding: 20px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
 }
 
@@ -31,13 +31,12 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 15px;
 }
 
 .avatar {
     width: 50px;
     height: 50px;
-    background: rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -54,147 +53,128 @@ body {
     font-weight: 600;
 }
 
-.level {
+.user-points {
     font-size: 14px;
-    opacity: 0.8;
-}
-
-.energy-bar {
-    margin-top: 10px;
-}
-
-.energy-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 14px;
-    margin-bottom: 5px;
-}
-
-.energy-progress {
-    height: 8px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.energy-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ffd700, #ffed4e);
-    border-radius: 10px;
-    width: 100%;
-    transition: width 0.3s;
+    color: #ffd700;
+    font-weight: 600;
 }
 
 /* Main Content */
 .main-content {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     padding: 20px;
+    overflow-y: auto;
 }
 
-.balance {
-    text-align: center;
-    margin-bottom: 40px;
+.section-header {
+    margin-bottom: 20px;
 }
 
-.coin-icon {
+.section-header h2 {
+    font-size: 24px;
+    margin-bottom: 5px;
+}
+
+.section-header p {
+    opacity: 0.7;
+    font-size: 14px;
+}
+
+/* Accounts Grid */
+.accounts-grid {
+    display: grid;
+    gap: 15px;
+}
+
+.account-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.account-card.featured {
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.account-badge {
     font-size: 48px;
+    text-align: center;
     margin-bottom: 10px;
 }
 
-.balance-amount {
-    font-size: 48px;
-    font-weight: bold;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.balance-label {
-    font-size: 18px;
-    opacity: 0.9;
-    margin-top: 5px;
-}
-
-.tap-area {
-    position: relative;
-    margin-bottom: 40px;
-}
-
-.tap-button {
-    width: 200px;
-    height: 200px;
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform 0.1s;
-    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
-    animation: pulse 2s infinite;
-}
-
-.tap-button:active {
-    transform: scale(0.95);
-}
-
-.coin-emoji {
-    font-size: 100px;
-    animation: rotate 3s linear infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4); }
-    50% { box-shadow: 0 10px 50px rgba(255, 215, 0, 0.6); }
-}
-
-@keyframes rotate {
-    from { transform: rotateY(0deg); }
-    to { transform: rotateY(360deg); }
-}
-
-.tap-value {
+.gift-badge {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 32px;
+    top: 10px;
+    right: 10px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 12px;
     font-weight: bold;
-    opacity: 0;
-    pointer-events: none;
 }
 
-.tap-value.show {
-    animation: floatUp 1s ease-out;
+.account-info {
+    margin-bottom: 15px;
 }
 
-@keyframes floatUp {
-    0% {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-    }
-    100% {
-        opacity: 0;
-        transform: translate(-50%, -150%);
-    }
+.account-tier {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 5px;
 }
 
-.boost-info {
+.account-level {
+    font-size: 16px;
+    opacity: 0.9;
+    margin-bottom: 10px;
+}
+
+.account-stats {
     display: flex;
-    gap: 20px;
+    gap: 15px;
+    margin-bottom: 10px;
+    font-size: 14px;
 }
 
-.boost-item {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 12px 20px;
-    border-radius: 12px;
+.account-desc {
+    font-size: 13px;
+    opacity: 0.8;
+    margin-bottom: 8px;
+}
+
+.account-seller {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.account-footer {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-    gap: 5px;
-    backdrop-filter: blur(10px);
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.account-price {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.btn-buy {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
 }
 
 /* Bottom Navigation */
@@ -203,7 +183,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
     display: flex;
     justify-content: space-around;
@@ -231,7 +211,7 @@ body {
 }
 
 .nav-label {
-    font-size: 12px;
+    font-size: 11px;
 }
 
 /* Pages */
@@ -241,7 +221,7 @@ body {
     left: 0;
     right: 0;
     bottom: 80px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     padding: 20px;
     overflow-y: auto;
     z-index: 10;
@@ -262,6 +242,25 @@ body {
 }
 
 /* Tasks */
+.points-display {
+    text-align: center;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    margin-bottom: 20px;
+}
+
+.points-big {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.points-label {
+    font-size: 16px;
+    opacity: 0.8;
+}
+
 .tasks-list {
     display: flex;
     flex-direction: column;
@@ -269,13 +268,14 @@ body {
 }
 
 .task-card {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
     border-radius: 16px;
     padding: 16px;
     display: flex;
     align-items: center;
     gap: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .task-icon {
@@ -285,7 +285,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
 }
 
@@ -294,7 +294,7 @@ body {
 }
 
 .task-title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     margin-bottom: 4px;
 }
@@ -305,76 +305,143 @@ body {
 }
 
 .task-btn {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
     border: none;
     padding: 8px 16px;
     border-radius: 8px;
     color: white;
     font-weight: 600;
     cursor: pointer;
+    font-size: 13px;
 }
 
 .task-btn.completed {
     background: rgba(76, 175, 80, 0.3);
 }
 
-/* Boost */
-.boost-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+.task-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-.boost-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 16px;
-    padding: 16px;
+/* My Accounts */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
 }
 
-.boost-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 12px;
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
 }
 
-.boost-icon {
-    font-size: 36px;
+.empty-text {
+    font-size: 18px;
+    opacity: 0.7;
+    margin-bottom: 30px;
 }
 
-.boost-details {
-    flex: 1;
-}
-
-.boost-name {
+.my-accounts-list h3 {
     font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.boost-description {
-    font-size: 13px;
     opacity: 0.8;
 }
 
-.boost-footer {
+.my-account-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.boost-level {
-    font-size: 14px;
-    opacity: 0.8;
+.my-account-card.purchased {
+    border-color: #4caf50;
 }
 
-.boost-price {
-    background: rgba(255, 215, 0, 0.2);
+.btn-remove {
+    background: rgba(255, 59, 48, 0.3);
+    border: none;
     padding: 8px 16px;
     border-radius: 8px;
-    font-weight: 600;
+    color: white;
     cursor: pointer;
+    font-size: 13px;
+}
+
+/* Buttons */
+.btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+}
+
+.btn-secondary {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-content h2 {
+    margin-bottom: 20px;
+}
+
+.input-field {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    color: white;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.input-field::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+textarea.input-field {
+    min-height: 80px;
+    resize: vertical;
 }
 
 /* Friends */
@@ -386,21 +453,23 @@ body {
 }
 
 .stat-card {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
     border-radius: 16px;
     padding: 20px;
     text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .stat-value {
     font-size: 32px;
     font-weight: bold;
     margin-bottom: 5px;
+    color: #ffd700;
 }
 
 .stat-label {
-    font-size: 14px;
+    font-size: 13px;
     opacity: 0.8;
 }
 
@@ -417,50 +486,6 @@ body {
     margin-bottom: 20px;
 }
 
-.referral-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.referral-item {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 12px;
-    padding: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-/* Floating Coins */
-#floatingCoins {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: 9999;
-}
-
-.floating-coin {
-    position: absolute;
-    font-size: 24px;
-    animation: floatCoin 1s ease-out forwards;
-}
-
-@keyframes floatCoin {
-    0% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-    100% {
-        opacity: 0;
-        transform: translateY(-100px) scale(0.5);
-    }
-}
-
 /* Loading Screen */
 .loading-screen {
     position: fixed;
@@ -468,7 +493,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     display: flex;
     align-items: center;
     justify-content: center;
