@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CoinDrop - Tap to Earn</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-logo">🪙</div>
+            <div class="loading-text">CoinDrop</div>
+            <div class="loading-spinner"></div>
+            <div class="loading-status">Yükleniyor...</div>
+        </div>
+    </div>
+
+    <div class="app" id="app" style="display: none;">
+        <!-- Header -->
+        <div class="header">
+            <div class="user-info">
+                <div class="avatar">👤</div>
+                <div class="user-details">
+                    <div class="username" id="username">Yükleniyor...</div>
+                    <div class="level">Level <span id="level">1</span></div>
+                </div>
+            </div>
+            <div class="energy-bar">
+                <div class="energy-label">
+                    <span>⚡ Enerji</span>
+                    <span id="energyText">1000/1000</span>
+                </div>
+                <div class="energy-progress">
+                    <div class="energy-fill" id="energyFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="balance">
+                <div class="coin-icon">💰</div>
+                <div class="balance-amount" id="balance">0</div>
+                <div class="balance-label">CoinDrop</div>
+            </div>
+
+            <div class="tap-area">
+                <div class="tap-button" id="tapButton">
+                    <div class="coin-emoji">🪙</div>
+                </div>
+                <div class="tap-value">+<span id="tapValue">1</span></div>
+            </div>
+
+            <div class="boost-info">
+                <div class="boost-item">
+                    <span>🚀 Çarpan</span>
+                    <span id="multiplier">x1</span>
+                </div>
+                <div class="boost-item">
+                    <span>👥 Referanslar</span>
+                    <span id="referrals">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item active" data-page="home">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Ana Sayfa</div>
+            </div>
+            <div class="nav-item" data-page="tasks">
+                <div class="nav-icon">📋</div>
+                <div class="nav-label">Görevler</div>
+            </div>
+            <div class="nav-item" data-page="boost">
+                <div class="nav-icon">⚡</div>
+                <div class="nav-label">Güçlendir</div>
+            </div>
+            <div class="nav-item" data-page="friends">
+                <div class="nav-icon">👥</div>
+                <div class="nav-label">Arkadaşlar</div>
+            </div>
+        </div>
+
+        <!-- Tasks Page -->
+        <div class="page" id="tasksPage" style="display: none;">
+            <div class="page-header">
+                <h2>📋 Görevler</h2>
+                <p>Görevleri tamamla, coin kazan!</p>
+            </div>
+            <div class="tasks-list" id="tasksList"></div>
+        </div>
+
+        <!-- Boost Page -->
+        <div class="page" id="boostPage" style="display: none;">
+            <div class="page-header">
+                <h2>⚡ Güçlendirmeler</h2>
+                <p>Kazancını artır!</p>
+            </div>
+            <div class="boost-list" id="boostList"></div>
+        </div>
+
+        <!-- Friends Page -->
+        <div class="page" id="friendsPage" style="display: none;">
+            <div class="page-header">
+                <h2>👥 Arkadaşlarını Davet Et</h2>
+                <p>Her arkadaş için 5000 coin kazan!</p>
+            </div>
+            <div class="referral-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalReferrals">0</div>
+                    <div class="stat-label">Toplam Davet</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="referralEarnings">0</div>
+                    <div class="stat-label">Kazanılan Coin</div>
+                </div>
+            </div>
+            <button class="btn-invite" id="inviteBtn">
+                <span>📤 Arkadaş Davet Et</span>
+            </button>
+            <div class="referral-list" id="referralList"></div>
+        </div>
+
+        <!-- Floating Coins -->
+        <div id="floatingCoins"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
