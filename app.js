@@ -32,10 +32,6 @@ function saveGame() {
     localStorage.setItem('pubgMarketplace', JSON.stringify(gameState));
 }
 
-// Initialize
-loadGame();
-updateUI();
-
 // User info
 const usernameElement = document.getElementById('username');
 if (tg.initDataUnsafe.user) {
@@ -89,11 +85,16 @@ let accounts = [
     }
 ];
 
+// Initialize
+loadGame();
+
 // Update UI
 function updateUI() {
     document.getElementById('points').textContent = gameState.points.toLocaleString();
     renderAccounts();
 }
+
+updateUI();
 
 // Render Accounts
 function renderAccounts() {
