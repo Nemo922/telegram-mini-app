@@ -12,19 +12,16 @@ window.addEventListener('load', () => {
 
 // Game State
 let gameState = {
-    balance: 0,
-    energy: 1000,
-    maxEnergy: 1000,
-    tapValue: 1,
-    multiplier: 1,
-    level: 1,
+    points: 0,
     referrals: 0,
-    completedTasks: []
+    completedTasks: [],
+    myAccounts: [],
+    purchasedAccounts: []
 };
 
 // Load saved data
 function loadGame() {
-    const saved = localStorage.getItem('gameState');
+    const saved = localStorage.getItem('pubgMarketplace');
     if (saved) {
         gameState = { ...gameState, ...JSON.parse(saved) };
     }
@@ -32,7 +29,7 @@ function loadGame() {
 
 // Save game data
 function saveGame() {
-    localStorage.setItem('gameState', JSON.stringify(gameState));
+    localStorage.setItem('pubgMarketplace', JSON.stringify(gameState));
 }
 
 // Initialize
@@ -48,88 +45,141 @@ if (tg.initDataUnsafe.user) {
     usernameElement.textContent = 'Player';
 }
 
-// Tap functionality
-const tapButton = document.getElementById('tapButton');
-const tapValueElement = document.getElementById('tapValue');
-const floatingCoinsContainer = document.getElementById('floatingCoins');
-
-tapButton.addEventListener('click', (e) => {
-    if (gameState.energy >= 1) {
-        // Add coins
-        const earnAmount = gameState.tapValue * gameState.multiplier;
-        gameState.balance += earnAmount;
-        gameState.energy -= 1;
-        
-        // Haptic feedback
-        tg.HapticFeedback.impactOccurred('light');
-        
-        // Show floating coin
-        createFloatingCoin(e.clientX, e.clientY, earnAmount);
-        
-        // Update UI
-        updateUI();
-        saveGame();
-    } else {
-        tg.showAlert('Enerjin bitti! Biraz bekle.');
+// PUBG Accounts (örnek veriler - gerçekte backend'den gelecek)
+let accounts = [
+    {
+        id: 1,
+        seller: 'Admin',
+        level: 85,
+        tier: 'Conqueror',
+        uc: 15000,
+        skins: 250,
+        price: 500,
+        priceType: 'TL',
+        image: '🏆',
+        description: 'Full eşya, tüm sezon royale pass',
+        featured: true
+    },
+    {
+        id: 2,
+        seller: 'ProGamer',
+        level: 72,
+        tier: 'Ace',
+        uc: 8000,
+        skins: 180,
+        price: 300,
+        priceType: 'TL',
+        image: '⭐',
+        description: 'Çok sayıda mythic skin',
+        featured: false
+    },
+    {
+        id: 3,
+        seller: 'Admin',
+        level: 50,
+        tier: 'Crown',
+        uc: 5000,
+        skins: 100,
+        price: 5000,
+        priceType: 'Puan',
+        image: '🎁',
+        description: 'Hediye hesap - görevlerle kazan!',
+        featured: true,
+        isGift: true
     }
-});
-
-// Create floating coin animation
-function createFloatingCoin(x, y, amount) {
-    const coin = document.createElement('div');
-    coin.className = 'floating-coin';
-    coin.textContent = `+${amount}`;
-    coin.style.left = x + 'px';
-    coin.style.top = y + 'px';
-    floatingCoinsContainer.appendChild(coin);
-    
-    setTimeout(() => coin.remove(), 1000);
-}
-
-// Energy regeneration
-setInterval(() => {
-    if (gameState.energy < gameState.maxEnergy) {
-        gameState.energy += 1;
-        updateUI();
-        saveGame();
-    }
-}, 1000);
+];
 
 // Update UI
 function updateUI() {
-    document.getElementById('balance').textContent = gameState.balance.toLocaleString();
-    document.getElementById('level').textContent = gameState.level;
-    document.getElementById('energyText').textContent = `${gameState.energy}/${gameState.maxEnergy}`;
-    document.getElementById('energyFill').style.width = `${(gameState.energy / gameState.maxEnergy) * 100}%`;
-    document.getElementById('tapValue').textContent = gameState.tapValue * gameState.multiplier;
-    document.getElementById('multiplier').textContent = `x${gameState.multiplier}`;
-    document.getElementById('referrals').textContent = gameState.referrals;
+    document.getElementById('points').textContent = gameState.points.toLocaleString();
+    renderAccounts();
+}
+
+// Render Accounts
+function renderAccounts() {
+    const accountsList = document.getElementById('accountsList');
+    accountsList.innerHTML = accounts.map(acc => `
+        <div class="account-card ${acc.featured ? 'featured' : ''}">
+            <div class="account-badge">${acc.image}</div>
+            ${acc.isGift ? '<div class="gift-badge">🎁 HEDİYE</div>' : ''}
+            <div class="account-info">
+                <div class="account-tier">${acc.tier}</div>
+                <div class="account-level">Level ${acc.level}</div>
+                <div class="account-stats">
+                    <span>💎 ${acc.uc} UC</span>
+                    <span>👕 ${acc.skins} Skin</span>
+                </div>
+                <div class="account-desc">${acc.description}</div>
+                <div class="account-seller">Satıcı: ${acc.seller}</div>
+            </div>
+            <div class="account-footer">
+                <div class="account-price">
+                    ${acc.priceType === 'TL' ? '💰' : '🎁'} ${acc.price} ${acc.priceType}
+                </div>
+                <button class="btn-buy" onclick="buyAccount(${acc.id})">
+                    ${acc.isGift ? 'Talep Et' : 'Satın Al'}
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Buy Account
+function buyAccount(accountId) {
+    const account = accounts.find(a => a.id === accountId);
+    if (!account) return;
+    
+    if (account.priceType === 'Puan') {
+        if (gameState.points >= account.price) {
+            tg.showConfirm(`${account.price} puan harcayarak bu hesabı almak istiyor musun?`, (confirmed) => {
+                if (confirmed) {
+                    gameState.points -= account.price;
+                    gameState.purchasedAccounts.push(account);
+                    tg.showAlert('Tebrikler! Hesap bilgileri mesajlarına gönderildi.');
+                    updateUI();
+                    saveGame();
+                }
+            });
+        } else {
+            tg.showAlert(`Yeterli puanın yok! ${account.price - gameState.points} puan daha gerekli.`);
+        }
+    } else {
+        // TL ile satın alma - ödeme sistemi
+        tg.showAlert('Ödeme için satıcıyla iletişime geçilecek...');
+        // Gerçek sistemde: Telegram Stars veya ödeme gateway
+    }
 }
 
 // Tasks
 const tasks = [
-    { id: 1, icon: '📱', title: 'Telegram Kanalına Katıl', reward: 5000, link: 'https://t.me/yourchannel' },
-    { id: 2, icon: '🎥', title: 'YouTube Kanalına Abone Ol', reward: 3000, link: 'https://youtube.com' },
-    { id: 3, icon: '🐦', title: 'Twitter\'da Takip Et', reward: 2000, link: 'https://twitter.com' },
-    { id: 4, icon: '📸', title: 'Instagram\'da Takip Et', reward: 2000, link: 'https://instagram.com' },
-    { id: 5, icon: '💬', title: 'Telegram Grubuna Katıl', reward: 5000, link: 'https://t.me/yourgroup' },
-    { id: 6, icon: '⭐', title: 'Günlük Giriş Bonusu', reward: 1000, daily: true }
+    { id: 1, icon: '📱', title: 'Telegram Kanalına Katıl', reward: 1000, link: 'https://t.me/yourchannel' },
+    { id: 2, icon: '🎥', title: 'YouTube Kanalına Abone Ol', reward: 800, link: 'https://youtube.com' },
+    { id: 3, icon: '🐦', title: 'Twitter\'da Takip Et', reward: 500, link: 'https://twitter.com' },
+    { id: 4, icon: '📸', title: 'Instagram\'da Takip Et', reward: 500, link: 'https://instagram.com' },
+    { id: 5, icon: '⭐', title: 'Günlük Giriş Bonusu', reward: 200, daily: true },
+    { id: 6, icon: '👥', title: '5 Arkadaş Davet Et', reward: 2500, referralRequired: 5 }
 ];
 
 function renderTasks() {
     const tasksList = document.getElementById('tasksList');
-    tasksList.innerHTML = tasks.map(task => {
+    tasksList.innerHTML = `
+        <div class="points-display">
+            <div class="points-big">🎁 ${gameState.points}</div>
+            <div class="points-label">Toplam Puanın</div>
+        </div>
+    ` + tasks.map(task => {
         const completed = gameState.completedTasks.includes(task.id);
+        const canComplete = task.referralRequired ? gameState.referrals >= task.referralRequired : true;
         return `
             <div class="task-card">
                 <div class="task-icon">${task.icon}</div>
                 <div class="task-info">
                     <div class="task-title">${task.title}</div>
-                    <div class="task-reward">+${task.reward.toLocaleString()} coin</div>
+                    <div class="task-reward">+${task.reward.toLocaleString()} puan</div>
                 </div>
                 <button class="task-btn ${completed ? 'completed' : ''}" 
                         onclick="completeTask(${task.id})"
-                        ${completed ? 'disabled' : ''}>
+                        ${completed || !canComplete ? 'disabled' : ''}>
                     ${completed ? '✓ Tamamlandı' : 'Başla'}
                 </button>
             </div>
@@ -146,84 +196,139 @@ function completeTask(taskId) {
     }
     
     setTimeout(() => {
-        gameState.balance += task.reward;
+        gameState.points += task.reward;
         gameState.completedTasks.push(taskId);
-        tg.showAlert(`Tebrikler! ${task.reward} coin kazandın!`);
+        tg.showAlert(`Tebrikler! ${task.reward} puan kazandın!`);
         updateUI();
         saveGame();
         renderTasks();
     }, 2000);
 }
 
-// Boosts
-const boosts = [
-    { id: 1, icon: '👆', name: 'Tap Gücü', description: 'Her tıklamada daha fazla coin', basePrice: 100, level: 1 },
-    { id: 2, icon: '⚡', name: 'Enerji Limiti', description: 'Maksimum enerji artışı', basePrice: 200, level: 1 },
-    { id: 3, icon: '🔋', name: 'Enerji Yenileme', description: 'Daha hızlı enerji yenileme', basePrice: 300, level: 1 },
-    { id: 4, icon: '🚀', name: 'Çarpan', description: 'Tüm kazançları artır', basePrice: 500, level: 1 }
-];
-
-function renderBoosts() {
-    const boostList = document.getElementById('boostList');
-    boostList.innerHTML = boosts.map(boost => {
-        const price = Math.floor(boost.basePrice * Math.pow(1.5, boost.level - 1));
-        return `
-            <div class="boost-card">
-                <div class="boost-header">
-                    <div class="boost-icon">${boost.icon}</div>
-                    <div class="boost-details">
-                        <div class="boost-name">${boost.name}</div>
-                        <div class="boost-description">${boost.description}</div>
-                    </div>
-                </div>
-                <div class="boost-footer">
-                    <div class="boost-level">Level ${boost.level}</div>
-                    <div class="boost-price" onclick="buyBoost(${boost.id})">
-                        ${price.toLocaleString()} 💰
-                    </div>
-                </div>
+// My Accounts
+function renderMyAccounts() {
+    const myAccountsList = document.getElementById('myAccountsList');
+    
+    if (gameState.myAccounts.length === 0 && gameState.purchasedAccounts.length === 0) {
+        myAccountsList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <div class="empty-text">Henüz hesabın yok</div>
+                <button class="btn-primary" onclick="showAddAccountModal()">
+                    ➕ Hesap Ekle
+                </button>
             </div>
         `;
-    }).join('');
+        return;
+    }
+    
+    myAccountsList.innerHTML = `
+        <button class="btn-primary" onclick="showAddAccountModal()" style="margin-bottom: 20px;">
+            ➕ Yeni Hesap Ekle
+        </button>
+        <h3 style="margin: 20px 0 10px 0;">Satışa Çıkardığın Hesaplar</h3>
+        ${gameState.myAccounts.map(acc => `
+            <div class="my-account-card">
+                <div class="account-info">
+                    <div><strong>Level ${acc.level}</strong> - ${acc.tier}</div>
+                    <div>💎 ${acc.uc} UC | 👕 ${acc.skins} Skin</div>
+                    <div class="account-price">${acc.price} ${acc.priceType}</div>
+                </div>
+                <button class="btn-remove" onclick="removeAccount(${acc.id})">Kaldır</button>
+            </div>
+        `).join('')}
+        <h3 style="margin: 20px 0 10px 0;">Satın Aldığın Hesaplar</h3>
+        ${gameState.purchasedAccounts.map(acc => `
+            <div class="my-account-card purchased">
+                <div class="account-info">
+                    <div><strong>Level ${acc.level}</strong> - ${acc.tier}</div>
+                    <div>💎 ${acc.uc} UC | 👕 ${acc.skins} Skin</div>
+                    <div style="font-size: 12px; opacity: 0.8;">Hesap bilgileri mesajlarında</div>
+                </div>
+            </div>
+        `).join('')}
+    `;
 }
 
-function buyBoost(boostId) {
-    const boost = boosts.find(b => b.id === boostId);
-    const price = Math.floor(boost.basePrice * Math.pow(1.5, boost.level - 1));
+// Add Account Modal
+function showAddAccountModal() {
+    const modal = `
+        <div class="modal" id="addAccountModal">
+            <div class="modal-content">
+                <h2>➕ Hesap Ekle</h2>
+                <input type="number" id="accLevel" placeholder="Level (örn: 75)" class="input-field">
+                <input type="text" id="accTier" placeholder="Tier (örn: Ace, Crown)" class="input-field">
+                <input type="number" id="accUC" placeholder="UC Miktarı" class="input-field">
+                <input type="number" id="accSkins" placeholder="Skin Sayısı" class="input-field">
+                <input type="number" id="accPrice" placeholder="Fiyat" class="input-field">
+                <select id="accPriceType" class="input-field">
+                    <option value="TL">TL</option>
+                    <option value="Puan">Puan</option>
+                </select>
+                <textarea id="accDesc" placeholder="Açıklama" class="input-field"></textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="addAccount()">Ekle</button>
+                    <button class="btn-secondary" onclick="closeModal()">İptal</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function addAccount() {
+    const newAccount = {
+        id: Date.now(),
+        seller: tg.initDataUnsafe.user?.first_name || 'User',
+        level: parseInt(document.getElementById('accLevel').value),
+        tier: document.getElementById('accTier').value,
+        uc: parseInt(document.getElementById('accUC').value),
+        skins: parseInt(document.getElementById('accSkins').value),
+        price: parseInt(document.getElementById('accPrice').value),
+        priceType: document.getElementById('accPriceType').value,
+        description: document.getElementById('accDesc').value,
+        image: '🎮'
+    };
     
-    if (gameState.balance >= price) {
-        gameState.balance -= price;
-        boost.level++;
-        
-        // Apply boost effects
-        switch(boostId) {
-            case 1: gameState.tapValue++; break;
-            case 2: gameState.maxEnergy += 100; break;
-            case 3: break; // Handled in energy regen
-            case 4: gameState.multiplier += 0.1; break;
-        }
-        
-        tg.HapticFeedback.notificationOccurred('success');
-        updateUI();
-        saveGame();
-        renderBoosts();
-    } else {
-        tg.showAlert('Yeterli coinin yok!');
+    if (!newAccount.level || !newAccount.tier || !newAccount.price) {
+        tg.showAlert('Lütfen tüm alanları doldur!');
+        return;
     }
+    
+    gameState.myAccounts.push(newAccount);
+    accounts.push(newAccount);
+    saveGame();
+    closeModal();
+    renderMyAccounts();
+    renderAccounts();
+    tg.showAlert('Hesabın eklendi ve satışa çıkarıldı!');
+}
+
+function removeAccount(accountId) {
+    gameState.myAccounts = gameState.myAccounts.filter(a => a.id !== accountId);
+    accounts = accounts.filter(a => a.id !== accountId);
+    saveGame();
+    renderMyAccounts();
+    renderAccounts();
+}
+
+function closeModal() {
+    const modal = document.getElementById('addAccountModal');
+    if (modal) modal.remove();
 }
 
 // Friends/Referral
 function renderFriends() {
     document.getElementById('totalReferrals').textContent = gameState.referrals;
-    document.getElementById('referralEarnings').textContent = (gameState.referrals * 5000).toLocaleString();
+    document.getElementById('referralEarnings').textContent = (gameState.referrals * 1000).toLocaleString();
 }
 
 document.getElementById('inviteBtn').addEventListener('click', () => {
-    const botUsername = 'yourbot'; // Bot username'inizi buraya yazın
+    const botUsername = 'coindrop_game_bot'; // Bot username'inizi buraya
     const userId = tg.initDataUnsafe.user?.id || '123456';
     const inviteLink = `https://t.me/${botUsername}?start=ref_${userId}`;
     
-    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('CoinDrop oyna ve coin kazan! 🪙')}`);
+    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('PUBG hesap al/sat! Bedava hesap kazan! 🎮')}`);
 });
 
 // Navigation
@@ -231,7 +336,7 @@ const navItems = document.querySelectorAll('.nav-item');
 const pages = {
     home: document.querySelector('.main-content'),
     tasks: document.getElementById('tasksPage'),
-    boost: document.getElementById('boostPage'),
+    myaccounts: document.getElementById('myaccountsPage'),
     friends: document.getElementById('friendsPage')
 };
 
@@ -239,11 +344,9 @@ navItems.forEach(item => {
     item.addEventListener('click', () => {
         const page = item.dataset.page;
         
-        // Update active nav
         navItems.forEach(nav => nav.classList.remove('active'));
         item.classList.add('active');
         
-        // Show/hide pages
         Object.keys(pages).forEach(key => {
             if (key === page) {
                 pages[key].style.display = key === 'home' ? 'flex' : 'block';
@@ -252,14 +355,14 @@ navItems.forEach(item => {
             }
         });
         
-        // Render page content
         if (page === 'tasks') renderTasks();
-        if (page === 'boost') renderBoosts();
+        if (page === 'myaccounts') renderMyAccounts();
         if (page === 'friends') renderFriends();
     });
 });
 
 // Initial render
+renderAccounts();
 renderTasks();
-renderBoosts();
+renderMyAccounts();
 renderFriends();
