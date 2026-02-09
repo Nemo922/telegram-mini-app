@@ -1,0 +1,843 @@
+// Telegram Web App API
+const tg = window.Telegram.WebApp;
+tg.expand();
+
+// Loading screen
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        document.getElementById('loadingScreen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+    }, 2000);
+});
+
+// Game State
+let gameState = {
+    points: 0,
+    referrals: 0,
+    completedTasks: [],
+    myAccounts: [],
+    purchasedAccounts: [],
+    isAdmin: false,
+    adminId: null // Buraya Telegram ID'ni ekleyeceğiz
+};
+
+// Load saved data
+function loadGame() {
+    const saved = localStorage.getItem('pubgMarketplace');
+    if (saved) {
+        gameState = { ...gameState, ...JSON.parse(saved) };
+    }
+}
+
+// Save game data
+function saveGame() {
+    localStorage.setItem('pubgMarketplace', JSON.stringify(gameState));
+}
+
+// User info
+const usernameElement = document.getElementById('username');
+let currentUserId = null;
+let currentUsername = null;
+if (tg.initDataUnsafe.user) {
+    const user = tg.initDataUnsafe.user;
+    currentUserId = user.id;
+    currentUsername = user.username || user.first_name;
+    usernameElement.textContent = user.first_name;
+    
+    // Admin kontrolü - Telegram ID'ni buraya yaz
+    const ADMIN_ID = 123456789; // BURAYA KENDİ TELEGRAM ID'NI YAZ
+    gameState.isAdmin = (currentUserId === ADMIN_ID);
+    gameState.adminId = ADMIN_ID;
+} else {
+    // Test için
+    currentUserId = 999999;
+    currentUsername = 'TestUser';
+    usernameElement.textContent = 'Oyuncu';
+    gameState.isAdmin = true;
+}
+
+// PUBG Accounts
+let accounts = [
+    {
+        id: 1,
+        seller: 'Admin',
+        sellerId: 123456789,
+        sellerUsername: 'admin',
+        level: 85,
+        tier: 'Conqueror',
+        uc: 15000,
+        skins: 250,
+        price: 500,
+        priceType: 'TL',
+        image: '🏆',
+        description: 'Full eşya, tüm sezon royale pass',
+        featured: true,
+        createdAt: Date.now()
+    },
+    {
+        id: 2,
+        seller: 'ProGamer',
+        sellerId: 987654321,
+        sellerUsername: 'progamer',
+        level: 72,
+        tier: 'Ace',
+        uc: 8000,
+        skins: 180,
+        price: 300,
+        priceType: 'TL',
+        image: '⭐',
+        description: 'Çok sayıda mythic skin',
+        featured: false,
+        createdAt: Date.now()
+    },
+    {
+        id: 3,
+        seller: 'Admin',
+        sellerId: 123456789,
+        sellerUsername: 'admin',
+        level: 50,
+        tier: 'Crown',
+        uc: 5000,
+        skins: 100,
+        price: 5000,
+        priceType: 'Puan',
+        image: '🎁',
+        description: 'Hediye hesap - görevlerle kazan!',
+        featured: true,
+        isGift: true,
+        createdAt: Date.now()
+    }
+];
+
+// Load accounts from localStorage
+function loadAccounts() {
+    const saved = localStorage.getItem('allAccounts');
+    if (saved) {
+        accounts = JSON.parse(saved);
+    }
+}
+
+function saveAccounts() {
+    localStorage.setItem('allAccounts', JSON.stringify(accounts));
+}
+
+loadAccounts();
+
+// Search & Filter System
+let filters = {
+    search: '',
+    minPrice: null,
+    maxPrice: null,
+    minLevel: null,
+    maxLevel: null,
+    tier: '',
+    sort: 'newest'
+};
+
+function filterAndSortAccounts() {
+    let filtered = [...accounts];
+    
+    if (filters.search) {
+        filtered = filtered.filter(acc => 
+            acc.description.toLowerCase().includes(filters.search) ||
+            acc.tier.toLowerCase().includes(filters.search) ||
+            acc.seller.toLowerCase().includes(filters.search)
+        );
+    }
+    
+    if (filters.minPrice !== null) {
+        filtered = filtered.filter(acc => acc.price >= filters.minPrice);
+    }
+    if (filters.maxPrice !== null) {
+        filtered = filtered.filter(acc => acc.price <= filters.maxPrice);
+    }
+    
+    if (filters.minLevel !== null) {
+        filtered = filtered.filter(acc => acc.level >= filters.minLevel);
+    }
+    if (filters.maxLevel !== null) {
+        filtered = filtered.filter(acc => acc.level <= filters.maxLevel);
+    }
+    
+    if (filters.tier) {
+        filtered = filtered.filter(acc => acc.tier === filters.tier);
+    }
+    
+    switch(filters.sort) {
+        case 'newest':
+            filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            break;
+        case 'price-low':
+            filtered.sort((a, b) => a.price - b.price);
+            break;
+        case 'price-high':
+            filtered.sort((a, b) => b.price - a.price);
+            break;
+        case 'level-high':
+            filtered.sort((a, b) => b.level - a.level);
+            break;
+    }
+    
+    return filtered;
+}
+
+// Initialize
+loadGame();
+
+// Update UI
+function updateUI() {
+    document.getElementById('points').textContent = gameState.points.toLocaleString();
+    renderAccounts();
+}
+
+updateUI();
+
+// Buy Account
+function buyAccount(accountId) {
+    const account = accounts.find(a => a.id === accountId);
+    if (!account) return;
+    
+    if (account.priceType === 'Puan') {
+        if (gameState.points >= account.price) {
+            if (confirm(`${account.price} puan harcayarak bu hesabı almak istiyor musun?`)) {
+                gameState.points -= account.price;
+                gameState.purchasedAccounts.push(account);
+                alert('Tebrikler! Hesap bilgileri mesajlarına gönderildi.');
+                updateUI();
+                saveGame();
+            }
+        } else {
+            alert(`Yeterli puanın yok! ${account.price - gameState.points} puan daha gerekli.`);
+        }
+    } else {
+        alert('Ödeme için satıcıyla iletişime geçilecek...');
+    }
+}
+
+// Tasks
+const tasks = [
+    { id: 1, icon: '📱', title: 'Telegram Kanalına Katıl', reward: 1000, link: 'https://t.me/yourchannel', enabled: true },
+    { id: 2, icon: '🎥', title: 'YouTube Kanalına Abone Ol', reward: 800, link: 'https://youtube.com', enabled: true },
+    { id: 3, icon: '🐦', title: 'Twitter\'da Takip Et', reward: 500, link: 'https://twitter.com', enabled: true },
+    { id: 4, icon: '📸', title: 'Instagram\'da Takip Et', reward: 500, link: 'https://instagram.com', enabled: true },
+    { id: 5, icon: '⭐', title: 'Günlük Giriş Bonusu', reward: 200, daily: true, enabled: true },
+    { id: 6, icon: '👥', title: '5 Arkadaş Davet Et', reward: 2500, referralRequired: 5, enabled: true }
+];
+
+function saveTasksToStorage() {
+    localStorage.setItem('adminTasks', JSON.stringify(tasks));
+}
+
+function loadTasksFromStorage() {
+    const saved = localStorage.getItem('adminTasks');
+    if (saved) {
+        const savedTasks = JSON.parse(saved);
+        savedTasks.forEach((savedTask, index) => {
+            if (tasks[index]) {
+                tasks[index] = { ...tasks[index], ...savedTask };
+            }
+        });
+    }
+}
+
+loadTasksFromStorage();
+
+function renderTasks() {
+    const tasksList = document.getElementById('tasksList');
+    const enabledTasks = tasks.filter(t => t.enabled);
+    
+    tasksList.innerHTML = `
+        <div class="points-display">
+            <div class="points-big">🎁 ${gameState.points}</div>
+            <div class="points-label">Toplam Puanın</div>
+        </div>
+        ${gameState.isAdmin ? '<button class="btn-primary" onclick="showAdminTaskPanel()" style="margin-bottom: 20px;">⚙️ Görevleri Yönet</button>' : ''}
+    ` + enabledTasks.map(task => {
+        const completed = gameState.completedTasks.includes(task.id);
+        const canComplete = task.referralRequired ? gameState.referrals >= task.referralRequired : true;
+        return `
+            <div class="task-card">
+                <div class="task-icon">${task.icon}</div>
+                <div class="task-info">
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-reward">+${task.reward.toLocaleString()} puan</div>
+                </div>
+                <button class="task-btn ${completed ? 'completed' : ''}" 
+                        onclick="completeTask(${task.id})"
+                        ${completed || !canComplete ? 'disabled' : ''}>
+                    ${completed ? '✓ Tamamlandı' : 'Başla'}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function completeTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || gameState.completedTasks.includes(taskId)) return;
+    
+    if (task.link) {
+        window.open(task.link, '_blank');
+    }
+    
+    setTimeout(() => {
+        gameState.points += task.reward;
+        gameState.completedTasks.push(taskId);
+        alert(`Tebrikler! ${task.reward} puan kazandın!`);
+        updateUI();
+        saveGame();
+        renderTasks();
+    }, 2000);
+}
+
+// My Accounts
+function renderMyAccounts() {
+    const myAccountsList = document.getElementById('myAccountsList');
+    
+    // Sadece kendi ilanlarını göster
+    const myOwnAccounts = accounts.filter(a => a.sellerId === currentUserId);
+    
+    const myAccountsHTML = myOwnAccounts.length > 0 ? `
+        <h3 style="margin: 20px 0 10px 0;">Satışa Çıkardığın Hesaplar</h3>
+        ${myOwnAccounts.map(acc => `
+            <div class="my-account-card">
+                <div class="account-info">
+                    <div><strong>Seviye ${acc.level}</strong> - ${acc.tier}</div>
+                    <div>💎 ${acc.uc} UC | 👕 ${acc.skins} Skin</div>
+                    <div class="account-price">${acc.price} ${acc.priceType}</div>
+                </div>
+                <button class="btn-remove" onclick="deleteAccount(${acc.id})">Kaldır</button>
+            </div>
+        `).join('')}
+    ` : '';
+    
+    const purchasedHTML = gameState.purchasedAccounts.length > 0 ? `
+        <h3 style="margin: 20px 0 10px 0;">Satın Aldığın Hesaplar</h3>
+        ${gameState.purchasedAccounts.map(acc => `
+            <div class="my-account-card purchased">
+                <div class="account-info">
+                    <div><strong>Seviye ${acc.level}</strong> - ${acc.tier}</div>
+                    <div>💎 ${acc.uc} UC | 👕 ${acc.skins} Skin</div>
+                    <div style="font-size: 12px; opacity: 0.8;">Satıcı: @${acc.sellerUsername}</div>
+                </div>
+            </div>
+        `).join('')}
+    ` : '';
+    
+    if (myOwnAccounts.length === 0 && gameState.purchasedAccounts.length === 0) {
+        myAccountsList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <div class="empty-text">Henüz hesabın yok</div>
+                <button class="btn-primary" onclick="showAddAccountModal()">
+                    ➕ Hesap Ekle
+                </button>
+            </div>
+        `;
+    } else {
+        myAccountsList.innerHTML = `
+            <button class="btn-primary" onclick="showAddAccountModal()" style="margin-bottom: 20px;">
+                ➕ Yeni Hesap Ekle
+            </button>
+            ${myAccountsHTML}
+            ${purchasedHTML}
+        `;
+    }
+}
+
+// Add Account Modal
+function showAddAccountModal() {
+    const modal = `
+        <div class="modal" id="addAccountModal">
+            <div class="modal-content">
+                <h2>➕ Hesap Ekle</h2>
+                <input type="number" id="accLevel" placeholder="Seviye (örn: 75)" class="input-field">
+                <input type="text" id="accTier" placeholder="Tier (örn: Ace, Crown, Conqueror)" class="input-field">
+                <input type="number" id="accUC" placeholder="UC Miktarı" class="input-field">
+                <input type="number" id="accSkins" placeholder="Skin Sayısı" class="input-field">
+                <input type="number" id="accPrice" placeholder="Fiyat" class="input-field">
+                <select id="accPriceType" class="input-field">
+                    <option value="TL">TL</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                </select>
+                <textarea id="accDesc" placeholder="Açıklama (örn: Full eşya, mythic skinler)" class="input-field"></textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="addAccount()">Ekle</button>
+                    <button class="btn-secondary" onclick="closeModal()">İptal</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function addAccount() {
+    const newAccount = {
+        id: Date.now(),
+        seller: currentUsername,
+        sellerId: currentUserId,
+        sellerUsername: currentUsername,
+        level: parseInt(document.getElementById('accLevel').value),
+        tier: document.getElementById('accTier').value,
+        uc: parseInt(document.getElementById('accUC').value),
+        skins: parseInt(document.getElementById('accSkins').value),
+        price: parseInt(document.getElementById('accPrice').value),
+        priceType: document.getElementById('accPriceType').value,
+        description: document.getElementById('accDesc').value,
+        image: '🎮',
+        featured: false,
+        createdAt: Date.now()
+    };
+    
+    if (!newAccount.level || !newAccount.tier || !newAccount.price) {
+        alert('Lütfen tüm alanları doldur!');
+        return;
+    }
+    
+    gameState.myAccounts.push(newAccount);
+    accounts.push(newAccount);
+    saveGame();
+    saveAccounts();
+    closeModal();
+    renderMyAccounts();
+    renderAccounts();
+    alert('Hesabın eklendi ve satışa çıkarıldı!');
+}
+
+function removeAccount(accountId) {
+    gameState.myAccounts = gameState.myAccounts.filter(a => a.id !== accountId);
+    accounts = accounts.filter(a => a.id !== accountId);
+    saveGame();
+    renderMyAccounts();
+    renderAccounts();
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId || 'addAccountModal');
+    if (modal) modal.remove();
+}
+
+// Friends/Referral
+function renderFriends() {
+    document.getElementById('totalReferrals').textContent = gameState.referrals;
+    document.getElementById('referralEarnings').textContent = (gameState.referrals * 1000).toLocaleString();
+}
+
+document.getElementById('inviteBtn').addEventListener('click', () => {
+    const botUsername = 'coindrop_game_bot'; // Bot username'inizi buraya
+    const userId = tg.initDataUnsafe.user?.id || '123456';
+    const inviteLink = `https://t.me/${botUsername}?start=ref_${userId}`;
+    
+    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('PUBG hesap al/sat! Bedava hesap kazan! 🎮')}`);
+});
+
+// Navigation
+const navItems = document.querySelectorAll('.nav-item');
+const pages = {
+    home: document.querySelector('.main-content'),
+    tasks: document.getElementById('tasksPage'),
+    myaccounts: document.getElementById('myaccountsPage'),
+    friends: document.getElementById('friendsPage')
+};
+
+navItems.forEach(item => {
+    item.addEventListener('click', () => {
+        const page = item.dataset.page;
+        
+        navItems.forEach(nav => nav.classList.remove('active'));
+        item.classList.add('active');
+        
+        Object.keys(pages).forEach(key => {
+            if (key === page) {
+                pages[key].style.display = key === 'home' ? 'flex' : 'block';
+            } else {
+                pages[key].style.display = 'none';
+            }
+        });
+        
+        if (page === 'tasks') renderTasks();
+        if (page === 'myaccounts') renderMyAccounts();
+        if (page === 'friends') renderFriends();
+    });
+});
+
+// Initial render
+renderAccounts();
+renderTasks();
+renderMyAccounts();
+renderFriends();
+
+
+// Admin Task Management
+function showAdminTaskPanel() {
+    const modal = `
+        <div class="modal admin-modal" id="adminTaskModal">
+            <div class="admin-panel">
+                <div class="admin-header">
+                    <h2>⚙️ Görev Yönetimi</h2>
+                    <button class="close-btn" onclick="closeModal('adminTaskModal')">✕</button>
+                </div>
+                <div class="admin-content">
+                    ${tasks.map(task => `
+                        <div class="admin-card ${!task.enabled ? 'disabled' : ''}">
+                            <div class="admin-card-header">
+                                <div class="admin-card-icon">${task.icon}</div>
+                                <div class="admin-card-info">
+                                    <div class="admin-card-title">${task.title}</div>
+                                    <div class="admin-card-subtitle">${task.reward} puan • ${task.link ? 'Link var' : 'Link yok'}</div>
+                                </div>
+                                <div class="admin-card-status">
+                                    ${task.enabled ? '<span class="status-badge active">Aktif</span>' : '<span class="status-badge inactive">Pasif</span>'}
+                                </div>
+                            </div>
+                            <div class="admin-card-actions">
+                                <button class="action-btn edit" onclick="editTask(${task.id})" title="Düzenle">
+                                    <span>✏️</span> Düzenle
+                                </button>
+                                <button class="action-btn ${task.enabled ? 'disable' : 'enable'}" onclick="toggleTask(${task.id})" title="${task.enabled ? 'Kaldır' : 'Aktifleştir'}">
+                                    <span>${task.enabled ? '🚫' : '✅'}</span> ${task.enabled ? 'Kaldır' : 'Aktifleştir'}
+                                </button>
+                                ${task.enabled ? `<button class="action-btn pin" onclick="pinTask(${task.id})" title="Sabitle"><span>📌</span> Sabitle</button>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="btn-add-new" onclick="addNewTask()">
+                    <span>➕</span> Yeni Görev Ekle
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function toggleTaskMenu(taskId) {
+    const menu = document.getElementById(`taskMenu${taskId}`);
+    // Diğer menüleri kapat
+    document.querySelectorAll('.task-menu').forEach(m => {
+        if (m.id !== `taskMenu${taskId}`) m.style.display = 'none';
+    });
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+function editTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    const modal = `
+        <div class="modal" id="editTaskModal">
+            <div class="modal-content">
+                <h2>✏️ Görevi Düzenle</h2>
+                <input type="text" id="editTaskTitle" value="${task.title}" placeholder="Görev Başlığı" class="input-field">
+                <input type="text" id="editTaskIcon" value="${task.icon}" placeholder="Emoji (örn: 📱)" class="input-field">
+                <input type="number" id="editTaskReward" value="${task.reward}" placeholder="Ödül Puanı" class="input-field">
+                <input type="text" id="editTaskLink" value="${task.link || ''}" placeholder="Link (opsiyonel)" class="input-field">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="saveTaskEdit(${taskId})">Kaydet</button>
+                    <button class="btn-secondary" onclick="closeEditModal()">İptal</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function saveTaskEdit(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    task.title = document.getElementById('editTaskTitle').value;
+    task.icon = document.getElementById('editTaskIcon').value;
+    task.reward = parseInt(document.getElementById('editTaskReward').value);
+    task.link = document.getElementById('editTaskLink').value;
+    
+    saveTasksToStorage();
+    closeEditModal();
+    closeModal();
+    renderTasks();
+    alert('Görev güncellendi!');
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('editTaskModal');
+    if (modal) modal.remove();
+}
+
+function toggleTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    task.enabled = !task.enabled;
+    saveTasksToStorage();
+    closeModal();
+    renderTasks();
+    alert(task.enabled ? 'Görev aktifleştirildi!' : 'Görev kaldırıldı!');
+}
+
+function pinTask(taskId) {
+    const taskIndex = tasks.findIndex(t => t.id === taskId);
+    if (taskIndex > 0) {
+        const task = tasks.splice(taskIndex, 1)[0];
+        tasks.unshift(task);
+        saveTasksToStorage();
+        closeModal();
+        renderTasks();
+        alert('Görev en üste sabitlendi!');
+    }
+}
+
+function addNewTask() {
+    const modal = `
+        <div class="modal" id="addTaskModal">
+            <div class="modal-content">
+                <h2>➕ Yeni Görev Ekle</h2>
+                <input type="text" id="newTaskTitle" placeholder="Görev Başlığı" class="input-field">
+                <input type="text" id="newTaskIcon" placeholder="Emoji (örn: 🎮)" class="input-field">
+                <input type="number" id="newTaskReward" placeholder="Ödül Puanı" class="input-field">
+                <input type="text" id="newTaskLink" placeholder="Link (opsiyonel)" class="input-field">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="saveNewTask()">Ekle</button>
+                    <button class="btn-secondary" onclick="closeAddTaskModal()">İptal</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function saveNewTask() {
+    const newTask = {
+        id: Date.now(),
+        title: document.getElementById('newTaskTitle').value,
+        icon: document.getElementById('newTaskIcon').value,
+        reward: parseInt(document.getElementById('newTaskReward').value),
+        link: document.getElementById('newTaskLink').value,
+        enabled: true
+    };
+    
+    if (!newTask.title || !newTask.icon || !newTask.reward) {
+        alert('Lütfen tüm alanları doldurun!');
+        return;
+    }
+    
+    tasks.push(newTask);
+    saveTasksToStorage();
+    closeAddTaskModal();
+    closeModal();
+    renderTasks();
+    alert('Yeni görev eklendi!');
+}
+
+function closeAddTaskModal() {
+    const modal = document.getElementById('addTaskModal');
+    if (modal) modal.remove();
+}
+
+// Admin Account Management
+function renderAccounts() {
+    const accountsList = document.getElementById('accountsList');
+    const filteredAccounts = typeof filterAndSortAccounts === 'function' ? filterAndSortAccounts() : accounts;
+    
+    if (filteredAccounts.length === 0) {
+        accountsList.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">Sonuç bulunamadı</div></div>';
+        return;
+    }
+    
+    accountsList.innerHTML = filteredAccounts.map(acc => {
+        const isOwner = acc.sellerId === currentUserId;
+        const canEdit = isOwner || gameState.isAdmin;
+        
+        return `
+        <div class="account-card ${acc.featured ? 'featured' : ''}">
+            ${canEdit ? `
+                <div class="admin-overlay">
+                    <div class="admin-quick-actions">
+                        <button class="quick-action-btn" onclick="editAccount(${acc.id})" title="Düzenle">✏️</button>
+                        ${gameState.isAdmin ? `<button class="quick-action-btn" onclick="toggleFeatured(${acc.id})" title="${acc.featured ? 'Öne Çıkarmayı Kaldır' : 'Öne Çıkar'}">${acc.featured ? '⭐' : '☆'}</button>` : ''}
+                        <button class="quick-action-btn delete" onclick="deleteAccount(${acc.id})" title="Sil">🗑️</button>
+                    </div>
+                </div>
+            ` : ''}
+            <div class="account-badge">${acc.image}</div>
+            <div class="vitrin-label">Vitrin İlanı</div>
+            ${acc.isGift ? '<div class="gift-badge">🎁 HEDİYE</div>' : ''}
+            <div class="account-info">
+                <div class="account-tier">${acc.tier}</div>
+                <div class="account-level">Seviye ${acc.level}</div>
+                <div class="account-stats">
+                    <span>💎 ${acc.uc} UC</span>
+                    <span>👕 ${acc.skins} Skin</span>
+                </div>
+                <div class="account-desc">${acc.description}</div>
+                <div class="account-seller">
+                    Satıcı: @${acc.sellerUsername || acc.seller}
+                    ${!isOwner ? `<button class="btn-message" onclick="contactSeller('${acc.sellerUsername}', ${acc.id})">💬 Mesaj</button>` : ''}
+                </div>
+            </div>
+            <div class="account-footer">
+                <div class="account-price">
+                    ${acc.priceType === 'TL' ? '💰' : '🎁'} ${acc.price} ${acc.priceType}
+                </div>
+                <button class="btn-buy" onclick="buyAccount(${acc.id})">
+                    ${acc.isGift ? 'Talep Et' : 'Satın Al'}
+                </button>
+            </div>
+        </div>
+    `}).join('');
+}
+
+function contactSeller(username, accountId) {
+    const account = accounts.find(a => a.id === accountId);
+    const message = `Merhaba! "${account.tier} Seviye ${account.level}" ilanınla ilgileniyorum.`;
+    
+    if (tg.openTelegramLink) {
+        tg.openTelegramLink(`https://t.me/${username}?text=${encodeURIComponent(message)}`);
+    } else {
+        window.open(`https://t.me/${username}?text=${encodeURIComponent(message)}`, '_blank');
+    }
+}
+
+function toggleAccountMenu(accountId) {
+    const menu = document.getElementById(`accountMenu${accountId}`);
+    document.querySelectorAll('.task-menu').forEach(m => {
+        if (m.id !== `accountMenu${accountId}`) m.style.display = 'none';
+    });
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+function editAccount(accountId) {
+    const acc = accounts.find(a => a.id === accountId);
+    const canEdit = acc.sellerId === currentUserId || gameState.isAdmin;
+    
+    if (!canEdit) {
+        alert('Bu ilanı sadece sahibi düzenleyebilir!');
+        return;
+    }
+    
+    const modal = `
+        <div class="modal" id="editAccountModal">
+            <div class="modal-content">
+                <h2>✏️ Hesabı Düzenle</h2>
+                <input type="number" id="editAccLevel" value="${acc.level}" placeholder="Seviye" class="input-field">
+                <input type="text" id="editAccTier" value="${acc.tier}" placeholder="Tier" class="input-field">
+                <input type="number" id="editAccUC" value="${acc.uc}" placeholder="UC" class="input-field">
+                <input type="number" id="editAccSkins" value="${acc.skins}" placeholder="Skin Sayısı" class="input-field">
+                <input type="number" id="editAccPrice" value="${acc.price}" placeholder="Fiyat" class="input-field">
+                <textarea id="editAccDesc" class="input-field">${acc.description}</textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="saveAccountEdit(${accountId})">Kaydet</button>
+                    <button class="btn-secondary" onclick="closeEditAccountModal()">İptal</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function saveAccountEdit(accountId) {
+    const acc = accounts.find(a => a.id === accountId);
+    acc.level = parseInt(document.getElementById('editAccLevel').value);
+    acc.tier = document.getElementById('editAccTier').value;
+    acc.uc = parseInt(document.getElementById('editAccUC').value);
+    acc.skins = parseInt(document.getElementById('editAccSkins').value);
+    acc.price = parseInt(document.getElementById('editAccPrice').value);
+    acc.description = document.getElementById('editAccDesc').value;
+    
+    saveAccounts();
+    closeEditAccountModal();
+    renderAccounts();
+    alert('Hesap güncellendi!');
+}
+
+function closeEditAccountModal() {
+    const modal = document.getElementById('editAccountModal');
+    if (modal) modal.remove();
+}
+
+function deleteAccount(accountId) {
+    const account = accounts.find(a => a.id === accountId);
+    const canDelete = account.sellerId === currentUserId || gameState.isAdmin;
+    
+    if (!canDelete) {
+        alert('Bu ilanı sadece sahibi silebilir!');
+        return;
+    }
+    
+    if (confirm('Bu hesabı silmek istediğinden emin misin?')) {
+        const index = accounts.findIndex(a => a.id === accountId);
+        accounts.splice(index, 1);
+        saveAccounts();
+        renderAccounts();
+        alert('Hesap silindi!');
+    }
+}
+
+function toggleFeatured(accountId) {
+    const acc = accounts.find(a => a.id === accountId);
+    acc.featured = !acc.featured;
+    renderAccounts();
+    alert(acc.featured ? 'Hesap öne çıkarıldı!' : 'Öne çıkarma kaldırıldı!');
+}
+
+
+// Search & Filter Functions
+
+function toggleFilters() {
+    const panel = document.getElementById('filterPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function applyFilters() {
+    filters.search = document.getElementById('searchInput').value.toLowerCase();
+    filters.minPrice = parseInt(document.getElementById('minPrice').value) || null;
+    filters.maxPrice = parseInt(document.getElementById('maxPrice').value) || null;
+    filters.minLevel = parseInt(document.getElementById('minLevel').value) || null;
+    filters.maxLevel = parseInt(document.getElementById('maxLevel').value) || null;
+    filters.tier = document.getElementById('tierFilter').value;
+    filters.sort = document.getElementById('sortFilter').value;
+    
+    renderAccounts();
+    toggleFilters();
+}
+
+function resetFilters() {
+    filters = {
+        search: '',
+        minPrice: null,
+        maxPrice: null,
+        minLevel: null,
+        maxLevel: null,
+        tier: '',
+        sort: 'newest'
+    };
+    
+    document.getElementById('searchInput').value = '';
+    document.getElementById('minPrice').value = '';
+    document.getElementById('maxPrice').value = '';
+    document.getElementById('minLevel').value = '';
+    document.getElementById('maxLevel').value = '';
+    document.getElementById('tierFilter').value = '';
+    document.getElementById('sortFilter').value = 'newest';
+    
+    renderAccounts();
+}
+
+// Real-time search
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            filters.search = e.target.value.toLowerCase();
+            renderAccounts();
+        });
+    }
+});
+
+
+// Back button functionality
+function goBack(fromPage) {
+    // Hide current page
+    document.getElementById(fromPage + 'Page').style.display = 'none';
+    
+    // Show home page
+    document.querySelector('.main-content').style.display = 'flex';
+    
+    // Update nav
+    navItems.forEach(nav => nav.classList.remove('active'));
+    document.querySelector('[data-page="home"]').classList.add('active');
+}

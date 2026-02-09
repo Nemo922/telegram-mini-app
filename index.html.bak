@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PUBG Marketplace</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <!-- Stripe -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <link rel="stylesheet" href="new-style.css">
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-logo">🎮</div>
+            <div class="loading-text">PUBG Market</div>
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+    <div class="app" id="app" style="display: none;">
+        <div class="header">
+            <div class="user-info">
+                <div class="avatar">👤</div>
+                <div class="user-details">
+                    <div class="username" id="username">Yükleniyor...</div>
+                    <div class="user-points">🎁 <span id="points">0</span> Puan</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="showNotifications()" style="position: relative;">
+                    🔔
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+                <button class="header-btn" onclick="showStats()">📊</button>
+                <button class="header-btn" onclick="showProfile()">👤</button>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="section-header">
+                <h2>🛒 Satılık Hesaplar</h2>
+                <p>Premium PUBG hesapları</p>
+            </div>
+            
+            <!-- Search & Filter -->
+            <div class="search-filter-bar">
+                <input type="text" id="searchInput" placeholder="🔍 Ara..." class="search-input">
+                <button class="filter-btn" id="filterBtn" onclick="toggleFilters()">⚙️</button>
+            </div>
+            
+            <div class="filter-panel" id="filterPanel" style="display: none;">
+                <div class="filter-group">
+                    <label>Kategori</label>
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="">Tümü</option>
+                        <option value="sale">Sadece Satılık</option>
+                        <option value="gift">Sadece Hediye</option>
+                        <option value="verified">Doğrulanmış Satıcılar</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Fiyat</label>
+                    <div class="range-inputs">
+                        <input type="number" id="minPrice" placeholder="Min" class="range-input">
+                        <span>-</span>
+                        <input type="number" id="maxPrice" placeholder="Max" class="range-input">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Seviye</label>
+                    <div class="range-inputs">
+                        <input type="number" id="minLevel" placeholder="Min" class="range-input">
+                        <span>-</span>
+                        <input type="number" id="maxLevel" placeholder="Max" class="range-input">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Tier</label>
+                    <select id="tierFilter" class="filter-select">
+                        <option value="">Tümü</option>
+                        <option value="Conqueror">Conqueror</option>
+                        <option value="Ace">Ace</option>
+                        <option value="Crown">Crown</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Sıralama</label>
+                    <select id="sortFilter" class="filter-select">
+                        <option value="newest">En Yeni</option>
+                        <option value="popular">En Popüler</option>
+                        <option value="price-low">Ucuz → Pahalı</option>
+                        <option value="price-high">Pahalı → Ucuz</option>
+                        <option value="level-high">Yüksek Seviye</option>
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn-apply" onclick="applyFilters()">Uygula</button>
+                    <button class="btn-reset" onclick="resetFilters()">Sıfırla</button>
+                </div>
+            </div>
+            
+            <div class="accounts-grid" id="accountsList"></div>
+        </div>
+        <div class="bottom-nav">
+            <div class="nav-item active" data-page="home">
+                <div class="nav-icon">🛒</div>
+                <div class="nav-label">Mağaza</div>
+            </div>
+            <div class="nav-item" data-page="favorites">
+                <div class="nav-icon">❤️</div>
+                <div class="nav-label">Favoriler</div>
+            </div>
+            <div class="nav-item" data-page="tasks">
+                <div class="nav-icon">🎁</div>
+                <div class="nav-label">Kazan</div>
+            </div>
+            <div class="nav-item" data-page="myaccounts">
+                <div class="nav-icon">📦</div>
+                <div class="nav-label">Hesaplarım</div>
+            </div>
+            <div class="nav-item" data-page="friends">
+                <div class="nav-icon">👥</div>
+                <div class="nav-label">Arkadaşlar</div>
+            </div>
+        </div>
+        <div class="page" id="tasksPage" style="display: none;">
+            <button class="back-btn" onclick="goBack('tasks')">← Geri</button>
+            <div class="page-header">
+                <h2>🎁 Bedava Hesap Kazan</h2>
+                <p>Görevleri tamamla, puan kazan, bedava hesap al!</p>
+            </div>
+            <div class="tasks-list" id="tasksList"></div>
+        </div>
+        <div class="page" id="myaccountsPage" style="display: none;">
+            <button class="back-btn" onclick="goBack('myaccounts')">← Geri</button>
+            <div class="page-header">
+                <h2>📦 Hesaplarım</h2>
+                <p>Sahip olduğun ve sattığın hesaplar</p>
+            </div>
+            <div class="my-accounts-list" id="myAccountsList"></div>
+        </div>
+        <div class="page" id="friendsPage" style="display: none;">
+            <button class="back-btn" onclick="goBack('friends')">← Geri</button>
+            <div class="page-header">
+                <h2>👥 Arkadaşlarını Davet Et</h2>
+                <p>Her arkadaş için 1000 puan kazan!</p>
+            </div>
+            <div class="referral-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalReferrals">0</div>
+                    <div class="stat-label">Toplam Davet</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="referralEarnings">0</div>
+                    <div class="stat-label">Kazanılan Puan</div>
+                </div>
+            </div>
+            <button class="btn-invite" id="inviteBtn">📤 Arkadaş Davet Et</button>
+        </div>
+        <div class="page" id="favoritesPage" style="display: none;">
+            <button class="back-btn" onclick="goBack('favorites')">← Geri</button>
+            <div class="page-header">
+                <h2>❤️ Favorilerim</h2>
+                <p>Beğendiğin hesaplar</p>
+            </div>
+            <div class="favorites-grid" id="favoritesList"></div>
+        </div>
+        <div class="page" id="notificationsPage" style="display: none;">
+            <button class="back-btn" onclick="goBack('notifications')">← Geri</button>
+            <div class="page-header">
+                <h2>🔔 Bildirimler</h2>
+                <p>Son aktiviteler</p>
+            </div>
+            <div class="notifications-list" id="notificationsList"></div>
+        </div>
+        <div class="page" id="statsPage" style="display: none;">
+            <button class="back-btn" onclick="goBack('stats')">← Geri</button>
+            <div class="page-header">
+                <h2>📊 İstatistikler</h2>
+                <p>Satış ve görüntülenme verileri</p>
+            </div>
+            <div class="stats-content" id="statsContent"></div>
+        </div>
+        <div class="page" id="profilePage" style="display: none;">
+            <button class="back-btn" onclick="goBack('profile')">← Geri</button>
+            <div class="profile-content" id="profileContent"></div>
+        </div>
+    </div>
+    <script src="config.js"></script>
+    <script src="firebase-service.js"></script>
+    <script src="telegram-service.js"></script>
+    <script src="stripe-service.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -6,11 +6,11 @@ const express = require('express');
 const path = require('path');
 
 // Bot token'ınızı buraya yazın
-const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
+const BOT_TOKEN = '8287757071:AAHrwyEepuDcK2f0z8awHR_mcVsPdHBPsSc';
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 // Web App URL'iniz (GitHub Pages veya hosting)
-const WEB_APP_URL = 'https://yourusername.github.io/telegram-mini-shop/';
+const WEB_APP_URL = 'https://nemo922.github.io/telegram-mini-app/';
 
 // Express server (mini app dosyalarını serve etmek için)
 const app = express();

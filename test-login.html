@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 500px; margin: 0 auto; }
+        input, button { padding: 10px; margin: 10px 0; width: 100%; box-sizing: border-box; }
+        button { background: #667eea; color: white; border: none; cursor: pointer; }
+        .log { background: #222; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Multi-User Login Test</h1>
+        
+        <h3>1️⃣ Kayıt Yap</h3>
+        <input type="text" id="regName" placeholder="Ad (örn: Ahmet)">
+        <input type="text" id="regTelegramId" placeholder="Telegram ID (örn: 123456789)">
+        <input type="text" id="regUsername" placeholder="Telegram Username (örn: ahmet)">
+        <button onclick="register()">✅ Kayıt Yap</button>
+        
+        <h3>2️⃣ Çıkış Yap</h3>
+        <button onclick="logout()">🚪 Çıkış Yap</button>
+        
+        <h3>3️⃣ Giriş Yap</h3>
+        <input type="text" id="loginTelegramId" placeholder="Telegram ID (örn: 123456789)">
+        <button onclick="login()">🔐 Giriş Yap</button>
+        
+        <h3>📊 Durum</h3>
+        <div class="log" id="log"></div>
+        
+        <h3>💾 localStorage Verileri</h3>
+        <button onclick="showStorage()">Göster</button>
+        <div class="log" id="storage"></div>
+    </div>
+
+    <script>
+        function log(msg) {
+            const logEl = document.getElementById('log');
+            logEl.innerHTML += msg + '<br>';
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function register() {
+            const name = document.getElementById('regName').value;
+            const telegramId = document.getElementById('regTelegramId').value;
+            const username = document.getElementById('regUsername').value;
+            
+            if (!name || !telegramId || !username) {
+                alert('Tüm alanları doldur!');
+                return;
+            }
+            
+            try {
+                const userId = parseInt(telegramId);
+                const userProfile = {
+                    userId: userId,
+                    firstName: name,
+                    telegram: username,
+                    telegramId: userId,
+                    registeredAt: Date.now()
+                };
+                
+                // userProfile'ı kaydet
+                localStorage.setItem('userProfile', JSON.stringify(userProfile));
+                log(`✅ userProfile kaydedildi: ${name}`);
+                
+                // allUsers'a ekle
+                let allUsers = JSON.parse(localStorage.getItem('allUsers') || '{}');
+                allUsers[userId] = userProfile;
+                localStorage.setItem('allUsers', JSON.stringify(allUsers));
+                log(`✅ allUsers kaydedildi. Toplam kullanıcı: ${Object.keys(allUsers).length}`);
+                
+                showStorage();
+            } catch (e) {
+                log(`❌ Hata: ${e.message}`);
+            }
+        }
+
+        function logout() {
+            try {
+                localStorage.removeItem('userProfile');
+                log('🚪 Çıkış yapıldı - userProfile silindi');
+                showStorage();
+            } catch (e) {
+                log(`❌ Hata: ${e.message}`);
+            }
+        }
+
+        function login() {
+            const telegramId = document.getElementById('loginTelegramId').value;
+            
+            if (!telegramId) {
+                alert('Telegram ID gir!');
+                return;
+            }
+            
+            try {
+                const userId = parseInt(telegramId);
+                let allUsers = JSON.parse(localStorage.getItem('allUsers') || '{}');
+                
+                log(`🔍 Aranan ID: ${userId}`);
+                log(`📋 allUsers içindeki IDs: ${Object.keys(allUsers).join(', ')}`);
+                
+                if (allUsers[userId]) {
+                    const userProfile = allUsers[userId];
+                    localStorage.setItem('userProfile', JSON.stringify(userProfile));
+                    log(`✅ Giriş başarılı! Hoş geldin ${userProfile.firstName}`);
+                    showStorage();
+                } else {
+                    log(`❌ Bu ID ile kayıtlı hesap bulunamadı!`);
+                }
+            } catch (e) {
+                log(`❌ Hata: ${e.message}`);
+            }
+        }
+
+        function showStorage() {
+            const storage = document.getElementById('storage');
+            const userProfile = localStorage.getItem('userProfile');
+            const allUsers = localStorage.getItem('allUsers');
+            
+            storage.innerHTML = `
+                <strong>userProfile:</strong><br>
+                ${userProfile ? JSON.stringify(JSON.parse(userProfile), null, 2) : 'Boş'}<br><br>
+                <strong>allUsers:</strong><br>
+                ${allUsers ? JSON.stringify(JSON.parse(allUsers), null, 2) : 'Boş'}
+            `;
+        }
+
+        // Başlangıçta göster
+        showStorage();
+    </script>
+</body>
+</html>

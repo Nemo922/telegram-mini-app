@@ -1,4 +1,20 @@
-.DS_Store
+# Dependencies
 node_modules/
-*.log
+
+# Environment variables
 .env
+
+# Firebase service account
+serviceAccountKey.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

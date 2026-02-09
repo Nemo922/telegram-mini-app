@@ -132,8 +132,6 @@ function showLoginForm() {
 function performLogin() {
     const telegramId = document.getElementById('loginTelegramId').value.trim();
     
-    console.log('🔐 performLogin çağrıldı, Telegram ID:', telegramId);
-    
     if (!telegramId || !/^\d+$/.test(telegramId)) {
         alert('❌ Lütfen geçerli bir Telegram ID gir!');
         return;
@@ -143,31 +141,21 @@ function performLogin() {
         // Telegram ID'yi currentUserId olarak kaydet
         currentUserId = parseInt(telegramId);
         localStorage.setItem('currentUserId', currentUserId);
-        console.log('📝 currentUserId set:', currentUserId);
         
         // Tüm kullanıcılardan bul
-        const allUsersStr = localStorage.getItem('allUsers');
-        console.log('📋 allUsers raw:', allUsersStr);
-        
-        let allUsers = JSON.parse(allUsersStr || '{}');
-        console.log('📋 allUsers parsed:', allUsers);
-        console.log('🔍 Aranan ID:', currentUserId);
-        console.log('📊 allUsers keys:', Object.keys(allUsers));
+        let allUsers = JSON.parse(localStorage.getItem('allUsers') || '{}');
         
         if (allUsers[currentUserId]) {
             userProfile = allUsers[currentUserId];
             localStorage.setItem('userProfile', JSON.stringify(userProfile));
-            console.log('✅ Kullanıcı bulundu:', userProfile);
             
             const oldForm = document.querySelector('.registration-overlay');
             if (oldForm) oldForm.remove();
             
             document.getElementById('app').style.display = 'flex';
-            usernameElement.textContent = userProfile.firstName;
             renderProfile();
             addNotification(`👋 Hoş geldin, ${userProfile.firstName}!`);
         } else {
-            console.log('❌ Kullanıcı bulunamadı!');
             alert('❌ Bu Telegram ID ile kayıtlı hesap bulunamadı. Lütfen hesap oluştur.');
         }
     } catch (e) {
@@ -310,11 +298,6 @@ function completeRegistration() {
     const telegram = document.getElementById('regTelegram').value.trim().replace('@', '');
     const terms = document.getElementById('regTerms').checked;
     
-    console.log('📝 completeRegistration çağrıldı');
-    console.log('  firstName:', firstName);
-    console.log('  telegramId:', telegramId);
-    console.log('  telegram:', telegram);
-    
     // Validation
     if (!firstName || firstName.length < 2) {
         alert('❌ Lütfen geçerli bir ad gir (en az 2 karakter)');
@@ -347,10 +330,7 @@ function completeRegistration() {
         
         // Set currentUserId from Telegram ID
         currentUserId = parseInt(telegramId);
-        console.log('🆔 currentUserId set to:', currentUserId);
-        
         localStorage.setItem('currentUserId', currentUserId);
-        console.log('✅ currentUserId saved to localStorage');
         
         userProfile = {
             userId: currentUserId,
@@ -363,30 +343,14 @@ function completeRegistration() {
             verified: false
         };
         
-        console.log('📦 userProfile object created:', userProfile);
-        
         localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        console.log('✅ userProfile saved to localStorage');
         
         // Tüm kullanıcıları kaydet (multi-user support) - KRITIK!
-        const allUsersStr = localStorage.getItem('allUsers');
-        console.log('📋 allUsers before:', allUsersStr);
-        
-        let allUsers = JSON.parse(allUsersStr || '{}');
-        console.log('📋 allUsers parsed:', allUsers);
-        
+        let allUsers = JSON.parse(localStorage.getItem('allUsers') || '{}');
         allUsers[currentUserId] = userProfile;
-        console.log('📋 allUsers after adding user:', allUsers);
+        localStorage.setItem('allUsers', JSON.stringify(allUsers));
         
-        const allUsersJson = JSON.stringify(allUsers);
-        console.log('📋 allUsers JSON:', allUsersJson);
-        
-        localStorage.setItem('allUsers', allUsersJson);
-        console.log('✅ allUsers saved to localStorage');
-        
-        // Verify it was saved
-        const verify = localStorage.getItem('allUsers');
-        console.log('✅ Verification - allUsers from storage:', verify);
+        console.log('✅ User saved to allUsers:', allUsers);
         
         currentUsername = telegram;
         
@@ -412,8 +376,6 @@ function completeRegistration() {
         // Show app
         document.getElementById('loadingScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
-        
-        console.log('✅ Registration complete! userProfile:', userProfile);
     } catch (e) {
         console.error('Registration error:', e);
         alert('❌ Kayıt sırasında hata oluştu. Lütfen tekrar dene.');
@@ -538,22 +500,14 @@ let accounts = [
 
 // Load accounts from localStorage
 function loadAccounts() {
-    try {
-        const saved = localStorage.getItem('allAccounts');
-        if (saved) {
-            accounts = JSON.parse(saved);
-        }
-    } catch (e) {
-        console.warn('Error loading accounts:', e);
+    const saved = localStorage.getItem('allAccounts');
+    if (saved) {
+        accounts = JSON.parse(saved);
     }
 }
 
 function saveAccounts() {
-    try {
-        localStorage.setItem('allAccounts', JSON.stringify(accounts));
-    } catch (e) {
-        console.warn('Error saving accounts:', e);
-    }
+    localStorage.setItem('allAccounts', JSON.stringify(accounts));
 }
 
 loadAccounts();
@@ -753,26 +707,18 @@ const tasks = [
 ];
 
 function saveTasksToStorage() {
-    try {
-        localStorage.setItem('adminTasks', JSON.stringify(tasks));
-    } catch (e) {
-        console.warn('Error saving tasks:', e);
-    }
+    localStorage.setItem('adminTasks', JSON.stringify(tasks));
 }
 
 function loadTasksFromStorage() {
-    try {
-        const saved = localStorage.getItem('adminTasks');
-        if (saved) {
-            const savedTasks = JSON.parse(saved);
-            savedTasks.forEach((savedTask, index) => {
-                if (tasks[index]) {
-                    tasks[index] = { ...tasks[index], ...savedTask };
-                }
-            });
-        }
-    } catch (e) {
-        console.warn('Error loading tasks:', e);
+    const saved = localStorage.getItem('adminTasks');
+    if (saved) {
+        const savedTasks = JSON.parse(saved);
+        savedTasks.forEach((savedTask, index) => {
+            if (tasks[index]) {
+                tasks[index] = { ...tasks[index], ...savedTask };
+            }
+        });
     }
 }
 
@@ -2068,39 +2014,18 @@ function renderProfile() {
 
 function logout() {
     if (confirm('Çıkış yapmak istediğinden emin misin?')) {
-        // allUsers'ı kaydet (diğer kullanıcılar için)
-        const allUsers = localStorage.getItem('allUsers');
-        
-        // Tüm verileri sil
         localStorage.clear();
-        
-        // allUsers'ı geri yükle
-        if (allUsers) {
-            localStorage.setItem('allUsers', allUsers);
-            console.log('✅ allUsers korundu');
-        }
-        
-        console.log('🚪 Çıkış yapıldı');
         location.reload();
     }
 }
 
 // Search History
-let searchHistory = [];
-try {
-    searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-} catch (e) {
-    console.warn('Error loading search history:', e);
-}
+let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
 
 function addToSearchHistory(query) {
     if (!query || query.length < 2) return;
-    try {
-        searchHistory = [query, ...searchHistory.filter(q => q !== query)].slice(0, 10);
-        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-    } catch (e) {
-        console.warn('Error saving search history:', e);
-    }
+    searchHistory = [query, ...searchHistory.filter(q => q !== query)].slice(0, 10);
+    localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
 }
 
 function showSearchHistory() {
@@ -2135,42 +2060,25 @@ function searchFromHistory(query) {
 }
 
 function removeFromHistory(query) {
-    try {
-        searchHistory = searchHistory.filter(q => q !== query);
-        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-        closeModal('searchHistoryModal');
-        showSearchHistory();
-    } catch (e) {
-        console.warn('Error removing from history:', e);
-    }
+    searchHistory = searchHistory.filter(q => q !== query);
+    localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+    closeModal('searchHistoryModal');
+    showSearchHistory();
 }
 
 function clearSearchHistory() {
-    try {
-        searchHistory = [];
-        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-        closeModal('searchHistoryModal');
-        addNotification('🗑️ Arama geçmişi temizlendi');
-    } catch (e) {
-        console.warn('Error clearing search history:', e);
-    }
+    searchHistory = [];
+    localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+    closeModal('searchHistoryModal');
+    addNotification('🗑️ Arama geçmişi temizlendi');
 }
 
 // Recently Viewed
-let recentlyViewed = [];
-try {
-    recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-} catch (e) {
-    console.warn('Error loading recently viewed:', e);
-}
+let recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
 
 function addToRecentlyViewed(accountId) {
-    try {
-        recentlyViewed = [accountId, ...recentlyViewed.filter(id => id !== accountId)].slice(0, 20);
-        localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
-    } catch (e) {
-        console.warn('Error saving recently viewed:', e);
-    }
+    recentlyViewed = [accountId, ...recentlyViewed.filter(id => id !== accountId)].slice(0, 20);
+    localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
 }
 
 function showRecentlyViewed() {
@@ -2202,24 +2110,14 @@ function showRecentlyViewed() {
 }
 
 function clearRecentlyViewed() {
-    try {
-        recentlyViewed = [];
-        localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
-        closeModal('recentlyViewedModal');
-        addNotification('🗑️ Görüntüleme geçmişi temizlendi');
-    } catch (e) {
-        console.warn('Error clearing recently viewed:', e);
-    }
+    recentlyViewed = [];
+    localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
+    closeModal('recentlyViewedModal');
+    addNotification('🗑️ Görüntüleme geçmişi temizlendi');
 }
 
 // Notification Settings
-let notificationSettings = {};
-try {
-    notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"newListings": true, "priceDrops": true, "messages": true, "offers": true}');
-} catch (e) {
-    console.warn('Error loading notification settings:', e);
-    notificationSettings = {"newListings": true, "priceDrops": true, "messages": true, "offers": true};
-}
+let notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"newListings": true, "priceDrops": true, "messages": true, "offers": true}');
 
 function showNotificationSettings() {
     const modal = `
@@ -2276,13 +2174,9 @@ function showNotificationSettings() {
 }
 
 function toggleNotification(type) {
-    try {
-        notificationSettings[type] = !notificationSettings[type];
-        localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
-        addNotification(notificationSettings[type] ? '✅ Bildirim açıldı' : '❌ Bildirim kapatıldı');
-    } catch (e) {
-        console.warn('Error toggling notification:', e);
-    }
+    notificationSettings[type] = !notificationSettings[type];
+    localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+    addNotification(notificationSettings[type] ? '✅ Bildirim açıldı' : '❌ Bildirim kapatıldı');
 }
 
 // Support System
@@ -2454,11 +2348,10 @@ function showVerificationOptions() {
 function startTelegramVerification() {
     closeModal('verificationModal');
     
-    try {
-        const verificationCode = Math.floor(100000 + Math.random() * 900000);
-        localStorage.setItem('telegramVerificationCode', verificationCode.toString());
-        
-        const modal = `
+    const verificationCode = Math.floor(100000 + Math.random() * 900000);
+    localStorage.setItem('telegramVerificationCode', verificationCode.toString());
+    
+    const modal = `
         <div class="modal" id="telegramVerificationModal">
             <div class="modal-content">
                 <h2>📱 Telegram Doğrulaması</h2>
@@ -2504,11 +2397,7 @@ function startTelegramVerification() {
             </div>
         </div>
     `;
-        document.body.insertAdjacentHTML('beforeend', modal);
-    } catch (e) {
-        console.warn('Error starting telegram verification:', e);
-        alert('❌ Hata oluştu. Lütfen tekrar dene.');
-    }
+    document.body.insertAdjacentHTML('beforeend', modal);
 }
 
 function openVerificationBot() {
@@ -2615,43 +2504,33 @@ function sendEmailVerificationCode() {
         return;
     }
     
-    try {
-        const code = Math.floor(100000 + Math.random() * 900000);
-        localStorage.setItem('emailVerificationCode', code.toString());
-        localStorage.setItem('verificationEmail', email);
-        
-        // Simülasyon - gerçekte e-posta gönderilecek
-        addNotification(`📧 Doğrulama kodu gönderildi! (Test: ${code})`);
-        
-        document.getElementById('emailCodeStep').style.display = 'flex';
-        document.getElementById('emailConfirmBtn').style.display = 'block';
-    } catch (e) {
-        console.warn('Error sending email verification:', e);
-        alert('❌ Hata oluştu. Lütfen tekrar dene.');
-    }
+    const code = Math.floor(100000 + Math.random() * 900000);
+    localStorage.setItem('emailVerificationCode', code.toString());
+    localStorage.setItem('verificationEmail', email);
+    
+    // Simülasyon - gerçekte e-posta gönderilecek
+    addNotification(`📧 Doğrulama kodu gönderildi! (Test: ${code})`);
+    
+    document.getElementById('emailCodeStep').style.display = 'flex';
+    document.getElementById('emailConfirmBtn').style.display = 'block';
 }
 
 function confirmEmailVerification() {
-    try {
-        const enteredCode = document.getElementById('emailConfirmCode').value;
-        const savedCode = localStorage.getItem('emailVerificationCode');
+    const enteredCode = document.getElementById('emailConfirmCode').value;
+    const savedCode = localStorage.getItem('emailVerificationCode');
+    
+    if (enteredCode === savedCode) {
+        userProfile.verified = true;
+        userProfile.verificationMethod = 'email';
+        userProfile.verifiedAt = Date.now();
+        userProfile.email = localStorage.getItem('verificationEmail');
+        localStorage.setItem('userProfile', JSON.stringify(userProfile));
         
-        if (enteredCode === savedCode) {
-            userProfile.verified = true;
-            userProfile.verificationMethod = 'email';
-            userProfile.verifiedAt = Date.now();
-            userProfile.email = localStorage.getItem('verificationEmail');
-            localStorage.setItem('userProfile', JSON.stringify(userProfile));
-            
-            closeModal('emailVerificationModal');
-            addNotification('🎉 Tebrikler! Hesabın doğrulandı!');
-            renderProfile();
-        } else {
-            alert('❌ Hatalı kod! Lütfen tekrar dene.');
-        }
-    } catch (e) {
-        console.warn('Error confirming email verification:', e);
-        alert('❌ Hata oluştu. Lütfen tekrar dene.');
+        closeModal('emailVerificationModal');
+        addNotification('🎉 Tebrikler! Hesabın doğrulandı!');
+        renderProfile();
+    } else {
+        alert('❌ Hatalı kod! Lütfen tekrar dene.');
     }
 }
 
