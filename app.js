@@ -24,6 +24,7 @@ let gameState = {
     purchasedAccounts: [],
     favorites: [],
     notifications: [],
+    cart: [], // Sepet
     isAdmin: false,
     adminId: null,
     language: 'tr' // tr veya en
@@ -1294,8 +1295,8 @@ function renderAccounts() {
                 </div>
                 <div class="account-actions">
                     ${!isOwner && !acc.isGift ? `<button class="btn-offer" onclick="event.stopPropagation(); makeOffer(${acc.id})">💵</button>` : ''}
-                    <button class="btn-buy" onclick="event.stopPropagation(); buyAccount(${acc.id})">
-                        ${acc.isGift ? '🎁' : '🛒'}
+                    <button class="btn-buy" onclick="event.stopPropagation(); addToCart(${acc.id})" title="Sepete Ekle">
+                        🛒
                     </button>
                 </div>
             </div>
@@ -2082,6 +2083,118 @@ function logout() {
         
         console.log('🚪 Çıkış yapıldı');
         location.reload();
+    }
+}
+
+// ========== SEPET SİSTEMİ ==========
+function addToCart(accountId) {
+    const account = accounts.find(a => a.id === accountId);
+    if (!account) return;
+    
+    // Sepete ekle
+    const cartItem = {
+        id: accountId,
+        seller: account.seller,
+        sellerId: account.sellerId,
+        tier: account.tier,
+        level: account.level,
+        price: account.price,
+        priceType: account.priceType,
+        addedAt: Date.now()
+    };
+    
+    gameState.cart.push(cartItem);
+    saveGame();
+    
+    addNotification(`🛒 ${account.tier} hesabı sepete eklendi!`);
+    updateCartBadge();
+}
+
+function removeFromCart(accountId) {
+    gameState.cart = gameState.cart.filter(item => item.id !== accountId);
+    saveGame();
+    updateCartBadge();
+    addNotification('🗑️ Ürün sepetten kaldırıldı');
+}
+
+function updateCartBadge() {
+    const badge = document.getElementById('cartBadge');
+    if (badge) {
+        badge.textContent = gameState.cart.length;
+        badge.style.display = gameState.cart.length > 0 ? 'block' : 'none';
+    }
+}
+
+function showCart() {
+    const cartItems = gameState.cart;
+    const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0);
+    
+    const modal = `
+        <div class="modal" id="cartModal">
+            <div class="modal-content" style="max-width: 600px;">
+                <h2>🛒 Sepetim</h2>
+                
+                ${cartItems.length > 0 ? `
+                    <div class="cart-items">
+                        ${cartItems.map(item => `
+                            <div class="cart-item">
+                                <div class="cart-item-info">
+                                    <div class="cart-item-tier">${item.tier} - Seviye ${item.level}</div>
+                                    <div class="cart-item-seller">Satıcı: ${item.seller}</div>
+                                    <div class="cart-item-price">${item.price} ${item.priceType}</div>
+                                </div>
+                                <button class="cart-item-remove" onclick="removeFromCart(${item.id}); showCart();">✕</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="cart-summary">
+                        <div class="cart-total">
+                            <span>Toplam:</span>
+                            <span>${totalPrice} TL</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-primary" onclick="checkoutCart()" style="width: 100%; margin-top: 16px;">
+                        💳 Satın Al
+                    </button>
+                ` : `
+                    <p style="text-align: center; opacity: 0.6; padding: 40px 0;">
+                        Sepetinde ürün yok
+                    </p>
+                `}
+                
+                <button class="btn-secondary" onclick="closeModal('cartModal')" style="width: 100%; margin-top: 12px;">
+                    Kapat
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function checkoutCart() {
+    if (gameState.cart.length === 0) {
+        alert('Sepetinde ürün yok!');
+        return;
+    }
+    
+    const totalPrice = gameState.cart.reduce((sum, item) => sum + item.price, 0);
+    
+    if (confirm(`${gameState.cart.length} ürün için ${totalPrice} TL ödeyeceksin. Devam et?`)) {
+        // Satıcılara bildir
+        gameState.cart.forEach(item => {
+            addNotification(`📦 Yeni sipariş: ${item.tier} hesabı (${item.price} ${item.priceType})`);
+        });
+        
+        // Sepeti temizle
+        gameState.cart = [];
+        saveGame();
+        updateCartBadge();
+        
+        closeModal('cartModal');
+        addNotification('✅ Siparişin alındı! Satıcı seninle iletişime geçecek.');
     }
 }
 

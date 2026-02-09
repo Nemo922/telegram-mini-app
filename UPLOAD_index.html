@@ -1,3257 +1,2783 @@
-// Telegram Web App API
-const tg = window.Telegram.WebApp;
-tg.expand();
-
-// Loading screen
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        document.getElementById('loadingScreen').style.display = 'none';
-        
-        // Check if user is registered
-        if (checkUserProfile()) {
-            document.getElementById('app').style.display = 'flex';
-        }
-        // If not registered, showRegistrationForm() is called in checkUserProfile()
-    }, 2000);
-});
-
-// Game State
-let gameState = {
-    points: 0,
-    referrals: 0,
-    completedTasks: [],
-    myAccounts: [],
-    purchasedAccounts: [],
-    favorites: [],
-    notifications: [],
-    isAdmin: false,
-    adminId: null,
-    language: 'tr' // tr veya en
-};
-
-// Load saved data
-function loadGame() {
-    try {
-        const saved = localStorage.getItem('pubgMarketplace');
-        if (saved) {
-            gameState = { ...gameState, ...JSON.parse(saved) };
-        }
-    } catch (e) {
-        console.warn('Error loading game state:', e);
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1d29;
+    color: #fff;
+    overflow-x: hidden;
+}
+
+.app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 70px;
+}
+
+/* Header */
+.header {
+    padding: 16px 20px;
+    background: #23263a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.avatar {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.user-details {
+    flex: 1;
+}
+
+.username {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.user-points {
+    font-size: 13px;
+    color: #ffd700;
+    font-weight: 500;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    padding: 20px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.section-header {
+    margin-bottom: 16px;
+}
+
+.section-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.section-header p {
+    font-size: 13px;
+    color: #8b8d98;
+}
+
+/* Accounts Grid - Game Card Style */
+.accounts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.account-card {
+    background: #23263a;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid transparent;
+}
+
+.account-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.account-card.featured {
+    border-color: #ffd700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.account-badge {
+    width: 100%;
+    height: 120px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+    position: relative;
+}
+
+.gift-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #ff3b30;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.vitrin-label {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #4caf50;
+}
+
+.account-info {
+    padding: 12px;
+}
+
+.account-tier {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffd700;
+    margin-bottom: 4px;
+}
+
+.account-level {
+    font-size: 12px;
+    color: #8b8d98;
+    margin-bottom: 8px;
+}
+
+.account-stats {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: #8b8d98;
+}
+
+.account-desc {
+    font-size: 11px;
+    color: #8b8d98;
+    margin-bottom: 8px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.account-seller {
+    font-size: 10px;
+    color: #6b6d78;
+    margin-bottom: 8px;
+}
+
+.account-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.account-price {
+    font-size: 15px;
+    font-weight: 700;
+    color: #4caf50;
+}
+
+.btn-buy {
+    background: #667eea;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 11px;
+    transition: background 0.2s;
+}
+
+.btn-buy:hover {
+    background: #5568d3;
+}
+
+/* Admin Overlay - REMOVED, using card menu instead */
+
+/* Bottom Navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #23263a;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    z-index: 100;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+    padding: 4px 12px;
+}
+
+.nav-item.active {
+    opacity: 1;
+}
+
+.nav-icon {
+    font-size: 22px;
+}
+
+.nav-label {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+/* Pages */
+.page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 70px;
+    background: #1a1d29;
+    padding: 20px 16px;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.page-header {
+    margin-bottom: 20px;
+}
+
+.page-header h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.page-header p {
+    font-size: 13px;
+    color: #8b8d98;
+}
+
+/* Tasks */
+.points-display {
+    text-align: center;
+    padding: 24px;
+    background: #23263a;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.points-big {
+    font-size: 40px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.points-label {
+    font-size: 14px;
+    color: #8b8d98;
+}
+
+.tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.task-card {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.task-icon {
+    font-size: 32px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.task-info {
+    flex: 1;
+}
+
+.task-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.task-reward {
+    font-size: 12px;
+    color: #4caf50;
+    font-weight: 600;
+}
+
+.task-btn {
+    background: #667eea;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.task-btn.completed {
+    background: #4caf50;
+}
+
+.task-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Buttons */
+.btn-primary {
+    width: 100%;
+    background: #667eea;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+}
+
+.btn-secondary {
+    width: 100%;
+    background: #2d3142;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    background: #23263a;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+}
+
+.modal-content h2 {
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+.input-field {
+    width: 100%;
+    background: #1a1d29;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    color: white;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.input-field::placeholder {
+    color: #6b6d78;
+}
+
+textarea.input-field {
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Loading Screen */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #1a1d29;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-logo {
+    font-size: 80px;
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.loading-text {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 20px 0;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #667eea;
+    border-radius: 50%;
+    margin: 20px auto;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Referral Stats */
+.referral-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #4caf50;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #8b8d98;
+}
+
+.btn-invite {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+/* My Accounts */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-text {
+    font-size: 16px;
+    color: #8b8d98;
+    margin-bottom: 30px;
+}
+
+.my-accounts-list h3 {
+    font-size: 16px;
+    color: #8b8d98;
+    margin: 20px 0 10px;
+}
+
+.my-account-card {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.my-account-card.purchased {
+    border: 1px solid #4caf50;
+}
+
+.btn-remove {
+    background: #ff3b30;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+.btn-message {
+    background: #667eea;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: background 0.2s;
+}
+
+.btn-message:hover {
+    background: #5568d3;
+}
+
+
+/* Search & Filter */
+.search-filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.search-input {
+    flex: 1;
+    background: #23263a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: white;
+    font-size: 14px;
+}
+
+.search-input::placeholder {
+    color: #6b6d78;
+}
+
+.filter-btn {
+    background: #667eea;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.filter-panel {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.filter-group {
+    margin-bottom: 16px;
+}
+
+.filter-group:last-child {
+    margin-bottom: 0;
+}
+
+.filter-group label {
+    display: block;
+    font-size: 13px;
+    color: #8b8d98;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.range-input {
+    flex: 1;
+    background: #1a1d29;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    color: white;
+    font-size: 14px;
+}
+
+.range-input::placeholder {
+    color: #6b6d78;
+}
+
+.filter-select {
+    width: 100%;
+    background: #1a1d29;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    color: white;
+    font-size: 14px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.btn-apply {
+    flex: 1;
+    background: #667eea;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-reset {
+    flex: 1;
+    background: #2d3142;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+
+/* Back Button */
+.back-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px 16px;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-2px);
+}
+
+.back-btn:active {
+    transform: translateX(-4px);
+}
+
+/* Favorite Button */
+.favorite-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.favorite-btn:hover {
+    transform: scale(1.1);
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.favorite-btn.active {
+    animation: heartbeat 0.3s;
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* Verified Badge */
+.verified-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: #4caf50;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.verified-icon {
+    display: inline-block;
+    background: #4caf50;
+    color: white;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+    margin-left: 4px;
+}
+
+/* Account Actions */
+.account-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-offer {
+    background: #ff9800;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.btn-offer:hover {
+    background: #f57c00;
+}
+
+/* Notification Toast */
+.notification-toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 10000;
+    opacity: 0;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.notification-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Notification Badge */
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ff3b30;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Statistics Page */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-box {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+
+.stat-box-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #4caf50;
+    margin-bottom: 4px;
+}
+
+.stat-box-label {
+    font-size: 12px;
+    color: #8b8d98;
+}
+
+/* Language Switcher */
+.language-switcher {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 6px;
+    display: flex;
+    gap: 4px;
+    z-index: 100;
+}
+
+.lang-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.lang-btn.active {
+    background: #667eea;
+}
+
+/* Favorites Page */
+.favorites-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+/* Header Actions */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.header-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.header-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+/* Notifications List */
+.notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notification-item {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid #667eea;
+}
+
+.notification-item.info {
+    border-left-color: #2196f3;
+}
+
+.notification-item.success {
+    border-left-color: #4caf50;
+}
+
+.notification-item.warning {
+    border-left-color: #ff9800;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-message {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.notification-time {
+    font-size: 11px;
+    color: #8b8d98;
+}
+
+.notification-delete {
+    background: rgba(255, 59, 48, 0.2);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: #ff3b30;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.notification-delete:hover {
+    background: rgba(255, 59, 48, 0.3);
+}
+
+/* Stats Items */
+.stat-item {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.stat-item-info {
+    flex: 1;
+}
+
+.stat-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.stat-item-subtitle {
+    font-size: 12px;
+    color: #8b8d98;
+}
+
+.stat-item-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #4caf50;
+}
+
+/* Image Upload Section */
+.image-upload-section {
+    margin: 16px 0;
+}
+
+.image-upload-label {
+    display: block;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+    color: #8b8d98;
+}
+
+.image-upload-label:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #667eea;
+    color: white;
+}
+
+.image-upload-input {
+    display: none;
+}
+
+.image-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.image-preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.image-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(255, 59, 48, 0.9);
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Account Card Image */
+.account-image {
+    width: 100%;
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.image-count {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Detail Modal */
+.detail-modal {
+    padding: 0;
+    align-items: flex-start;
+    overflow-y: auto;
+}
+
+.detail-modal-content {
+    background: #1a1d29;
+    max-width: 600px;
+    width: 100%;
+    margin: 20px;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+}
+
+.detail-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.3s;
+}
+
+.detail-close-btn:hover {
+    background: rgba(255, 59, 48, 0.8);
+    transform: rotate(90deg);
+}
+
+.detail-image-slider {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    background: #23263a;
+}
+
+.detail-images {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.detail-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+    cursor: pointer;
+}
+
+.detail-image.active {
+    opacity: 1;
+}
+
+.detail-image-dots {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 5;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.dot.active {
+    background: white;
+    width: 24px;
+    border-radius: 4px;
+}
+
+.detail-badge {
+    width: 100%;
+    height: 300px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 120px;
+}
+
+.detail-content {
+    padding: 24px;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.detail-header h2 {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.detail-level {
+    font-size: 14px;
+    color: #8b8d98;
+}
+
+.favorite-btn-large {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.favorite-btn-large:hover {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.detail-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.detail-stat {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+
+.detail-stat-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.detail-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.detail-stat-label {
+    font-size: 12px;
+    color: #8b8d98;
+}
+
+.detail-description {
+    margin-bottom: 24px;
+}
+
+.detail-description h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.detail-description p {
+    font-size: 14px;
+    color: #8b8d98;
+    line-height: 1.6;
+}
+
+.detail-seller {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.detail-seller-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.detail-seller-avatar {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.detail-seller-name {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.detail-seller-label {
+    font-size: 12px;
+    color: #8b8d98;
+}
+
+.btn-contact {
+    background: #667eea;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn-contact:hover {
+    background: #5568d3;
+}
+
+.detail-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+}
+
+.detail-price {
+    margin-bottom: 16px;
+}
+
+.detail-price-label {
+    font-size: 12px;
+    color: #8b8d98;
+    margin-bottom: 4px;
+}
+
+.detail-price-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #4caf50;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-offer-large,
+.btn-buy-large {
+    flex: 1;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-offer-large {
+    background: #ff9800;
+    color: white;
+}
+
+.btn-offer-large:hover {
+    background: #f57c00;
+}
+
+.btn-buy-large {
+    background: #667eea;
+    color: white;
+}
+
+.btn-buy-large:hover {
+    background: #5568d3;
+}
+
+/* Modal Content Scrollable */
+.modal-content {
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+/* Card Menu Button (3 dots) */
+.card-menu-btn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 15;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.card-menu-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+}
+
+/* Card Dropdown Menu */
+.card-menu {
+    position: absolute;
+    top: 48px;
+    left: 8px;
+    background: rgba(26, 29, 41, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 8px;
+    z-index: 20;
+    min-width: 180px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    animation: menuSlideIn 0.2s ease-out;
+}
+
+@keyframes menuSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card-menu-item {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+}
+
+.card-menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.card-menu-item.delete:hover {
+    background: rgba(255, 59, 48, 0.2);
+    color: #ff3b30;
+}
+
+.card-menu-item span {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+/* My Account Actions */
+.my-account-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-edit {
+    background: #667eea;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-edit:hover {
+    background: #5568d3;
+}
+
+.btn-feature {
+    background: #ff9800;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+}
+
+.btn-feature:hover {
+    background: #f57c00;
+}
+
+.btn-remove {
+    background: #ff3b30;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-remove:hover {
+    background: #d32f2f;
+}
+
+/* Other User Account Card */
+.my-account-card.other-user {
+    border-left: 3px solid #667eea;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+/* Profile Page */
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    background: #23263a;
+    border-radius: 16px;
+    margin-bottom: 20px;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+}
+
+.profile-info h2 {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.profile-info p {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.profile-stat {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+
+.profile-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #4caf50;
+    margin-bottom: 4px;
+}
+
+.profile-stat-label {
+    font-size: 11px;
+    color: #8b8d98;
+}
+
+.profile-section {
+    margin-bottom: 20px;
+}
+
+.profile-section h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+}
+
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.setting-item {
+    background: #23263a;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.setting-item:hover {
+    background: #2a2d3e;
+}
+
+.setting-info {
+    flex: 1;
+}
+
+.setting-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.setting-subtitle {
+    font-size: 12px;
+    color: #8b8d98;
+}
+
+.setting-arrow {
+    font-size: 24px;
+    color: #8b8d98;
+}
+
+.language-switcher-inline {
+    display: flex;
+    gap: 8px;
+}
+
+.lang-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.lang-btn.active {
+    background: #667eea;
+    border-color: #667eea;
+}
+
+.btn-logout {
+    width: 100%;
+    background: rgba(255, 59, 48, 0.2);
+    border: 1px solid #ff3b30;
+    padding: 14px;
+    border-radius: 10px;
+    color: #ff3b30;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-logout:hover {
+    background: rgba(255, 59, 48, 0.3);
+}
+
+/* Toggle Switch */
+.toggle {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: 0.3s;
+    border-radius: 28px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.toggle input:checked + .toggle-slider {
+    background-color: #4caf50;
+}
+
+.toggle input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+}
+
+/* History List */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.history-item {
+    background: #23263a;
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.history-item:hover {
+    background: #2a2d3e;
+}
+
+.history-remove {
+    background: rgba(255, 59, 48, 0.2);
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #ff3b30;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Recent Grid */
+.recent-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.recent-item {
+    background: #23263a;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.recent-item:hover {
+    transform: translateY(-2px);
+}
+
+.recent-image {
+    width: 100%;
+    height: 100px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+}
+
+.recent-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.recent-info {
+    padding: 12px;
+}
+
+.recent-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.recent-price {
+    font-size: 14px;
+    color: #4caf50;
+    font-weight: 700;
+}
+
+/* Support Options */
+.support-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.support-btn {
+    background: #23263a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.support-btn:hover {
+    background: #2a2d3e;
+    border-color: #667eea;
+}
+
+.support-icon {
+    font-size: 32px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.support-info {
+    flex: 1;
+}
+
+.support-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: white;
+}
+
+.support-subtitle {
+    font-size: 12px;
+    color: #8b8d98;
+}
+
+/* FAQ List */
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.faq-item {
+    background: #23263a;
+    padding: 16px;
+    border-radius: 12px;
+}
+
+.faq-question {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #667eea;
+}
+
+.faq-answer {
+    font-size: 13px;
+    color: #8b8d98;
+    line-height: 1.5;
+}
+
+/* Registration Overlay */
+.registration-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #1a1d29 0%, #23263a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.registration-container {
+    background: #23263a;
+    border-radius: 24px;
+    max-width: 450px;
+    width: 100%;
+    padding: 32px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.registration-header {
+    text-align: center;
+    margin-bottom: 32px;
 }
 
-// Save game data
-function saveGame() {
-    try {
-        localStorage.setItem('pubgMarketplace', JSON.stringify(gameState));
-    } catch (e) {
-        console.warn('Error saving game state:', e);
-    }
+.registration-logo {
+    font-size: 64px;
+    margin-bottom: 16px;
+    animation: bounce 2s infinite;
 }
 
-// User info
-const usernameElement = document.getElementById('username');
-let currentUserId = null;
-let currentUsername = null;
-
-// Safe localStorage access
-function getFromStorage(key, defaultValue = null) {
-    try {
-        const item = localStorage.getItem(key);
-        return item ? JSON.parse(item) : defaultValue;
-    } catch (e) {
-        console.warn(`Storage error for ${key}:`, e);
-        return defaultValue;
-    }
+.registration-header h1 {
+    font-size: 24px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-function saveToStorage(key, value) {
-    try {
-        localStorage.setItem(key, JSON.stringify(value));
-        return true;
-    } catch (e) {
-        console.warn(`Storage error for ${key}:`, e);
-        return false;
-    }
+.registration-header p {
+    font-size: 14px;
+    color: #8b8d98;
 }
 
-let userProfile = getFromStorage('userProfile', null);
+.registration-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
 
-if (tg.initDataUnsafe.user) {
-    const user = tg.initDataUnsafe.user;
-    currentUserId = user.id;
-    currentUsername = user.username || user.first_name;
-    
-    // Admin kontrolü - Telegram ID'ni buraya yaz
-    const ADMIN_ID = 123456789; // BURAYA KENDİ TELEGRAM ID'NI YAZ
-    gameState.isAdmin = (currentUserId === ADMIN_ID);
-    gameState.adminId = ADMIN_ID;
-} else {
-    // Test için
-    currentUserId = 999999;
-    currentUsername = 'TestUser';
-    gameState.isAdmin = true;
-}
-
-// Check if user profile exists
-function checkUserProfile() {
-    if (!userProfile) {
-        showRegistrationForm();
-        return false;
-    }
-    usernameElement.textContent = userProfile.firstName;
-    return true;
-}
-
-// Login Form
-function showLoginForm() {
-    const modal = `
-        <div class="modal" id="loginModal">
-            <div class="modal-content" style="max-width: 400px;">
-                <h2>🔐 Giriş Yap</h2>
-                <p style="color: #8b8d98; margin-bottom: 20px;">Telegram ID'nle giriş yap</p>
-                
-                <input type="text" id="loginTelegramId" class="input-field" placeholder="Telegram ID'ni gir (örn: 123456789)" maxlength="20">
-                
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="btn-primary" onclick="performLogin()">Giriş Yap</button>
-                    <button class="btn-secondary" onclick="closeModal('loginModal')">İptal</button>
-                </div>
-                
-                <p style="text-align: center; color: #8b8d98; font-size: 12px; margin-top: 16px;">
-                    Telegram ID'ni bulmak için @userinfobot'u aç
-                </p>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-    document.getElementById('loginTelegramId').focus();
-}
-
-function performLogin() {
-    const telegramId = document.getElementById('loginTelegramId').value.trim();
-    
-    console.log('🔐 performLogin çağrıldı, Telegram ID:', telegramId);
-    
-    if (!telegramId || !/^\d+$/.test(telegramId)) {
-        alert('❌ Lütfen geçerli bir Telegram ID gir!');
-        return;
-    }
-    
-    try {
-        // Telegram ID'yi currentUserId olarak kaydet
-        currentUserId = parseInt(telegramId);
-        localStorage.setItem('currentUserId', currentUserId);
-        console.log('📝 currentUserId set:', currentUserId);
-        
-        // Tüm kullanıcılardan bul
-        const allUsersStr = localStorage.getItem('allUsers');
-        console.log('📋 allUsers raw:', allUsersStr);
-        
-        let allUsers = JSON.parse(allUsersStr || '{}');
-        console.log('📋 allUsers parsed:', allUsers);
-        console.log('🔍 Aranan ID:', currentUserId);
-        console.log('📊 allUsers keys:', Object.keys(allUsers));
-        
-        if (allUsers[currentUserId]) {
-            userProfile = allUsers[currentUserId];
-            localStorage.setItem('userProfile', JSON.stringify(userProfile));
-            console.log('✅ Kullanıcı bulundu:', userProfile);
-            
-            const oldForm = document.querySelector('.registration-overlay');
-            if (oldForm) oldForm.remove();
-            
-            document.getElementById('app').style.display = 'flex';
-            usernameElement.textContent = userProfile.firstName;
-            renderProfile();
-            addNotification(`👋 Hoş geldin, ${userProfile.firstName}!`);
-        } else {
-            console.log('❌ Kullanıcı bulunamadı!');
-            alert('❌ Bu Telegram ID ile kayıtlı hesap bulunamadı. Lütfen hesap oluştur.');
-        }
-    } catch (e) {
-        console.error('Login error:', e);
-        alert('❌ Giriş sırasında hata oluştu. Lütfen tekrar dene.');
-    }
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-function showRegistrationForm() {
-    const registrationHTML = `
-        <div class="registration-overlay">
-            <div class="registration-container">
-                <div class="registration-header">
-                    <div class="registration-logo">🎮</div>
-                    <h1>PUBG Market'e Hoş Geldin!</h1>
-                    <p>Başlamak için bir seçenek seç</p>
-                </div>
-                
-                <div class="registration-form" style="text-align: center;">
-                    <button class="btn-register" onclick="showLoginPanel()" style="margin-bottom: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        🔐 Giriş Yap
-                    </button>
-                    <button class="btn-register" onclick="showSignupPanel()" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                        ✅ Hesap Oluştur
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', registrationHTML);
-}
-
-function showLoginPanel() {
-    const loginHTML = `
-        <div class="registration-overlay">
-            <div class="registration-container">
-                <div class="registration-header">
-                    <div class="registration-logo">🔐</div>
-                    <h1>Giriş Yap</h1>
-                    <p>Telegram ID'nle giriş yap</p>
-                </div>
-                
-                <div class="registration-form">
-                    <div class="form-group">
-                        <label class="form-label">📱 Telegram ID</label>
-                        <input type="text" id="loginTelegramId" class="form-input" placeholder="Telegram ID'ni gir (örn: 123456789)" maxlength="20">
-                        <small class="form-hint">@userinfobot'u açarak ID'ni öğrenebilirsin</small>
-                    </div>
-                    
-                    <button class="btn-register" onclick="performLogin()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        🔐 Giriş Yap
-                    </button>
-                    
-                    <button class="btn-register" onclick="showRegistrationForm()" style="background: linear-gradient(135deg, #999 0%, #666 100%); margin-top: 12px;">
-                        ← Geri Dön
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Eski formu kaldır
-    const oldForm = document.querySelector('.registration-overlay');
-    if (oldForm) oldForm.remove();
-    
-    document.body.insertAdjacentHTML('beforeend', loginHTML);
-    document.getElementById('loginTelegramId').focus();
-}
-
-function showSignupPanel() {
-    const signupHTML = `
-        <div class="registration-overlay">
-            <div class="registration-container">
-                <div class="registration-header">
-                    <div class="registration-logo">✅</div>
-                    <h1>Hesap Oluştur</h1>
-                    <p>Bilgilerini girerek hesabını oluştur</p>
-                </div>
-                
-                <div class="registration-form">
-                    <div class="form-group">
-                        <label class="form-label">👤 Ad</label>
-                        <input type="text" id="regFirstName" class="form-input" placeholder="Adını gir" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">👤 Soyad <span style="opacity: 0.5; font-size: 12px;">(İsteğe bağlı)</span></label>
-                        <input type="text" id="regLastName" class="form-input" placeholder="Soyadını gir (opsiyonel)">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">🆔 Telegram ID</label>
-                        <input type="text" id="regTelegramId" class="form-input" placeholder="Telegram ID'ni gir (örn: 123456789)" maxlength="20" required>
-                        <small class="form-hint">
-                            📱 ID'ni öğrenmek için: Telegram'da <strong>@userinfobot</strong>'u aç ve mesaj gönder. Bot sana ID'ni gönderecek.
-                        </small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">📱 Telegram Kullanıcı Adı</label>
-                        <div class="telegram-input-wrapper">
-                            <span class="telegram-prefix">@</span>
-                            <input type="text" id="regTelegram" class="form-input telegram-input" placeholder="kullaniciadi" required>
-                        </div>
-                        <small class="form-hint">Telegram kullanıcı adını @ işareti olmadan gir</small>
-                    </div>
-                    
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="regTerms" required>
-                        <label for="regTerms">
-                            <a href="#" onclick="showTerms(); return false;">Kullanım Koşulları</a>'nı ve 
-                            <a href="#" onclick="showPrivacy(); return false;">Gizlilik Politikası</a>'nı okudum, kabul ediyorum
-                        </label>
-                    </div>
-                    
-                    <button class="btn-register" onclick="completeRegistration()" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                        ✅ Hesabı Oluştur
-                    </button>
-                    
-                    <button class="btn-register" onclick="showRegistrationForm()" style="background: linear-gradient(135deg, #999 0%, #666 100%); margin-top: 12px;">
-                        ← Geri Dön
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Eski formu kaldır
-    const oldForm = document.querySelector('.registration-overlay');
-    if (oldForm) oldForm.remove();
-    
-    document.body.insertAdjacentHTML('beforeend', signupHTML);
-}
-
-function completeRegistration() {
-    const firstName = document.getElementById('regFirstName').value.trim();
-    const lastName = document.getElementById('regLastName').value.trim();
-    const telegramId = document.getElementById('regTelegramId').value.trim();
-    const telegram = document.getElementById('regTelegram').value.trim().replace('@', '');
-    const terms = document.getElementById('regTerms').checked;
-    
-    console.log('📝 completeRegistration çağrıldı');
-    console.log('  firstName:', firstName);
-    console.log('  telegramId:', telegramId);
-    console.log('  telegram:', telegram);
-    
-    // Validation
-    if (!firstName || firstName.length < 2) {
-        alert('❌ Lütfen geçerli bir ad gir (en az 2 karakter)');
-        return;
-    }
-    
-    if (lastName && lastName.length < 2) {
-        alert('❌ Soyad en az 2 karakter olmalı');
-        return;
-    }
-    
-    if (!telegramId || !/^\d+$/.test(telegramId)) {
-        alert('❌ Lütfen geçerli bir Telegram ID gir (sadece rakamlar)');
-        return;
-    }
-    
-    if (!telegram || telegram.length < 3) {
-        alert('❌ Lütfen geçerli bir Telegram kullanıcı adı gir (en az 3 karakter)');
-        return;
-    }
-    
-    if (!terms) {
-        alert('❌ Devam etmek için kullanım koşullarını kabul etmelisin');
-        return;
-    }
-    
-    try {
-        // Save user profile
-        const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-        
-        // Set currentUserId from Telegram ID
-        currentUserId = parseInt(telegramId);
-        console.log('🆔 currentUserId set to:', currentUserId);
-        
-        localStorage.setItem('currentUserId', currentUserId);
-        console.log('✅ currentUserId saved to localStorage');
-        
-        userProfile = {
-            userId: currentUserId,
-            firstName: firstName,
-            lastName: lastName || '',
-            fullName: fullName,
-            telegram: telegram,
-            telegramId: parseInt(telegramId),
-            registeredAt: Date.now(),
-            verified: false
-        };
-        
-        console.log('📦 userProfile object created:', userProfile);
-        
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        console.log('✅ userProfile saved to localStorage');
-        
-        // Tüm kullanıcıları kaydet (multi-user support) - KRITIK!
-        const allUsersStr = localStorage.getItem('allUsers');
-        console.log('📋 allUsers before:', allUsersStr);
-        
-        let allUsers = JSON.parse(allUsersStr || '{}');
-        console.log('📋 allUsers parsed:', allUsers);
-        
-        allUsers[currentUserId] = userProfile;
-        console.log('📋 allUsers after adding user:', allUsers);
-        
-        const allUsersJson = JSON.stringify(allUsers);
-        console.log('📋 allUsers JSON:', allUsersJson);
-        
-        localStorage.setItem('allUsers', allUsersJson);
-        console.log('✅ allUsers saved to localStorage');
-        
-        // Verify it was saved
-        const verify = localStorage.getItem('allUsers');
-        console.log('✅ Verification - allUsers from storage:', verify);
-        
-        currentUsername = telegram;
-        
-        // Save to Firebase
-        if (typeof saveUserToFirebase === 'function') {
-            saveUserToFirebase(userProfile).then(success => {
-                if (success) {
-                    console.log('✅ User synced to Firebase');
-                }
-            });
-        }
-        
-        // Update UI
-        usernameElement.textContent = firstName;
-        
-        // Remove registration form
-        const oldForm = document.querySelector('.registration-overlay');
-        if (oldForm) oldForm.remove();
-        
-        // Show welcome notification
-        addNotification(`🎉 Hoş geldin ${firstName}! Hesabın başarıyla oluşturuldu.`);
-        
-        // Show app
-        document.getElementById('loadingScreen').style.display = 'none';
-        document.getElementById('app').style.display = 'flex';
-        
-        console.log('✅ Registration complete! userProfile:', userProfile);
-    } catch (e) {
-        console.error('Registration error:', e);
-        alert('❌ Kayıt sırasında hata oluştu. Lütfen tekrar dene.');
-    }
+.form-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
 }
 
-function showTerms() {
-    const modal = `
-        <div class="modal" id="termsModal">
-            <div class="modal-content">
-                <h2>📜 Kullanım Koşulları</h2>
-                <div class="terms-content">
-                    <h3>1. Genel Kurallar</h3>
-                    <p>PUBG Market platformunu kullanarak aşağıdaki kurallara uymayı kabul edersiniz:</p>
-                    <ul>
-                        <li>Sahte veya yanıltıcı ilan yayınlamayacaksınız</li>
-                        <li>Başkalarının hesaplarını izinsiz satmayacaksınız</li>
-                        <li>Platform üzerinden dolandırıcılık yapmayacaksınız</li>
-                    </ul>
-                    
-                    <h3>2. Hesap Güvenliği</h3>
-                    <p>Hesap bilgilerinizi güvende tutmak sizin sorumluluğunuzdadır.</p>
-                    
-                    <h3>3. İşlemler</h3>
-                    <p>Alıcı ve satıcı arasındaki işlemler kendi sorumluluklarındadır.</p>
-                </div>
-                <button class="btn-primary" onclick="closeModal('termsModal')">Kapat</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function showPrivacy() {
-    const modal = `
-        <div class="modal" id="privacyModal">
-            <div class="modal-content">
-                <h2>🔒 Gizlilik Politikası</h2>
-                <div class="terms-content">
-                    <h3>Toplanan Bilgiler</h3>
-                    <p>Platformumuz aşağıdaki bilgileri toplar:</p>
-                    <ul>
-                        <li>Ad ve Soyad</li>
-                        <li>Telegram kullanıcı adı</li>
-                        <li>İlan bilgileri</li>
-                    </ul>
-                    
-                    <h3>Bilgilerin Kullanımı</h3>
-                    <p>Bilgileriniz sadece platform içinde kullanılır ve üçüncü şahıslarla paylaşılmaz.</p>
-                    
-                    <h3>Veri Güvenliği</h3>
-                    <p>Verileriniz tarayıcınızda güvenli bir şekilde saklanır.</p>
-                </div>
-                <button class="btn-primary" onclick="closeModal('privacyModal')">Kapat</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-// PUBG Accounts
-let accounts = [
-    {
-        id: 1,
-        seller: 'Admin',
-        sellerId: 123456789,
-        sellerUsername: 'admin',
-        level: 85,
-        tier: 'Conqueror',
-        uc: 15000,
-        skins: 250,
-        price: 500,
-        priceType: 'TL',
-        image: '🏆',
-        description: 'Full eşya, tüm sezon royale pass',
-        featured: true,
-        createdAt: Date.now(),
-        views: 0,
-        verified: true,
-        images: []
-    },
-    {
-        id: 2,
-        seller: 'TestUser',
-        sellerId: 999999,
-        sellerUsername: 'TestUser',
-        level: 72,
-        tier: 'Ace',
-        uc: 8000,
-        skins: 180,
-        price: 300,
-        priceType: 'TL',
-        image: '⭐',
-        description: 'Çok sayıda mythic skin',
-        featured: false,
-        createdAt: Date.now(),
-        views: 0,
-        verified: false,
-        images: []
-    },
-    {
-        id: 3,
-        seller: 'TestUser',
-        sellerId: 999999,
-        sellerUsername: 'TestUser',
-        level: 50,
-        tier: 'Crown',
-        uc: 5000,
-        skins: 100,
-        price: 5000,
-        priceType: 'Puan',
-        image: '🎁',
-        description: 'Hediye hesap - görevlerle kazan!',
-        featured: false,
-        isGift: true,
-        createdAt: Date.now(),
-        views: 0,
-        verified: false,
-        images: []
-    }
-];
-
-// Load accounts from localStorage
-function loadAccounts() {
-    try {
-        const saved = localStorage.getItem('allAccounts');
-        if (saved) {
-            accounts = JSON.parse(saved);
-        }
-    } catch (e) {
-        console.warn('Error loading accounts:', e);
-    }
+.form-input {
+    background: #1a1d29;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: white;
+    font-size: 15px;
+    transition: all 0.3s;
 }
 
-function saveAccounts() {
-    try {
-        localStorage.setItem('allAccounts', JSON.stringify(accounts));
-    } catch (e) {
-        console.warn('Error saving accounts:', e);
-    }
+.form-input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: #1e2130;
 }
 
-loadAccounts();
-
-// Favorites System
-function toggleFavorite(accountId) {
-    const index = gameState.favorites.indexOf(accountId);
-    if (index > -1) {
-        gameState.favorites.splice(index, 1);
-        addNotification('❌ Favorilerden kaldırıldı');
-    } else {
-        gameState.favorites.push(accountId);
-        addNotification('⭐ Favorilere eklendi');
-    }
-    saveGame();
-    renderAccounts();
-}
-
-function isFavorite(accountId) {
-    return gameState.favorites.includes(accountId);
-}
-
-// Notification System
-function addNotification(message, type = 'info') {
-    const notification = {
-        id: Date.now(),
-        message,
-        type,
-        timestamp: Date.now(),
-        read: false
-    };
-    gameState.notifications.unshift(notification);
-    if (gameState.notifications.length > 50) {
-        gameState.notifications = gameState.notifications.slice(0, 50);
-    }
-    saveGame();
-    showNotificationToast(message);
-    updateNotificationBadge();
-}
-
-function showNotificationToast(message) {
-    const toast = document.createElement('div');
-    toast.className = 'notification-toast';
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => toast.classList.add('show'), 100);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-function updateNotificationBadge() {
-    const unreadCount = gameState.notifications.filter(n => !n.read).length;
-    const badge = document.getElementById('notificationBadge');
-    if (badge) {
-        badge.textContent = unreadCount;
-        badge.style.display = unreadCount > 0 ? 'block' : 'none';
-    }
+.form-input::placeholder {
+    color: #6b6d78;
 }
 
-// View Counter
-function incrementViews(accountId) {
-    const account = accounts.find(a => a.id === accountId);
-    if (account) {
-        account.views = (account.views || 0) + 1;
-        saveAccounts();
-    }
+.telegram-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
-// Offer System
-function makeOffer(accountId) {
-    const account = accounts.find(a => a.id === accountId);
-    if (!account) return;
-    
-    const offerPrice = prompt(`Teklif fiyatını gir (Orijinal: ${account.price} ${account.priceType}):`);
-    if (offerPrice && !isNaN(offerPrice)) {
-        addNotification(`💰 ${account.tier} hesabı için ${offerPrice} ${account.priceType} teklif edildi`);
-        alert(`Teklifin satıcıya iletildi! @${account.sellerUsername} seninle iletişime geçecek.`);
-    }
+.telegram-prefix {
+    position: absolute;
+    left: 16px;
+    font-size: 15px;
+    color: #667eea;
+    font-weight: 600;
+    pointer-events: none;
 }
 
-// Search & Filter System
-let filters = {
-    search: '',
-    category: '',
-    minPrice: null,
-    maxPrice: null,
-    minLevel: null,
-    maxLevel: null,
-    tier: '',
-    sort: 'newest'
-};
-
-function filterAndSortAccounts() {
-    let filtered = [...accounts];
-    
-    if (filters.search) {
-        filtered = filtered.filter(acc => 
-            acc.description.toLowerCase().includes(filters.search) ||
-            acc.tier.toLowerCase().includes(filters.search) ||
-            acc.seller.toLowerCase().includes(filters.search)
-        );
-    }
-    
-    if (filters.category) {
-        if (filters.category === 'sale') {
-            filtered = filtered.filter(acc => !acc.isGift);
-        } else if (filters.category === 'gift') {
-            filtered = filtered.filter(acc => acc.isGift);
-        } else if (filters.category === 'verified') {
-            filtered = filtered.filter(acc => acc.verified);
-        }
-    }
-    
-    if (filters.minPrice !== null) {
-        filtered = filtered.filter(acc => acc.price >= filters.minPrice);
-    }
-    if (filters.maxPrice !== null) {
-        filtered = filtered.filter(acc => acc.price <= filters.maxPrice);
-    }
-    
-    if (filters.minLevel !== null) {
-        filtered = filtered.filter(acc => acc.level >= filters.minLevel);
-    }
-    if (filters.maxLevel !== null) {
-        filtered = filtered.filter(acc => acc.level <= filters.maxLevel);
-    }
-    
-    if (filters.tier) {
-        filtered = filtered.filter(acc => acc.tier === filters.tier);
-    }
-    
-    switch(filters.sort) {
-        case 'newest':
-            filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-            break;
-        case 'price-low':
-            filtered.sort((a, b) => a.price - b.price);
-            break;
-        case 'price-high':
-            filtered.sort((a, b) => b.price - a.price);
-            break;
-        case 'level-high':
-            filtered.sort((a, b) => b.level - a.level);
-            break;
-        case 'popular':
-            filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
-            break;
-    }
-    
-    return filtered;
+.telegram-input {
+    padding-left: 36px;
 }
 
-// Initialize
-loadGame();
+.form-hint {
+    font-size: 12px;
+    color: #8b8d98;
+    margin-top: -4px;
+}
 
-// Update UI
-function updateUI() {
-    document.getElementById('points').textContent = gameState.points.toLocaleString();
-    renderAccounts();
+.form-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: #8b8d98;
 }
 
-updateUI();
+.form-checkbox input[type="checkbox"] {
+    margin-top: 2px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
 
-// Buy Account
-function buyAccount(accountId) {
-    const account = accounts.find(a => a.id === accountId);
-    if (!account) return;
-    
-    if (account.priceType === 'Puan') {
-        if (gameState.points >= account.price) {
-            if (confirm(`${account.price} puan harcayarak bu hesabı almak istiyor musun?`)) {
-                gameState.points -= account.price;
-                gameState.purchasedAccounts.push(account);
-                alert('Tebrikler! Hesap bilgileri mesajlarına gönderildi.');
-                updateUI();
-                saveGame();
-            }
-        } else {
-            alert(`Yeterli puanın yok! ${account.price - gameState.points} puan daha gerekli.`);
-        }
-    } else {
-        alert('Ödeme için satıcıyla iletişime geçilecek...');
-    }
+.form-checkbox a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
 }
 
-// Tasks
-const tasks = [
-    { id: 1, icon: '📱', title: 'Telegram Kanalına Katıl', reward: 1000, link: 'https://t.me/yourchannel', enabled: true },
-    { id: 2, icon: '🎥', title: 'YouTube Kanalına Abone Ol', reward: 800, link: 'https://youtube.com', enabled: true },
-    { id: 3, icon: '🐦', title: 'Twitter\'da Takip Et', reward: 500, link: 'https://twitter.com', enabled: true },
-    { id: 4, icon: '📸', title: 'Instagram\'da Takip Et', reward: 500, link: 'https://instagram.com', enabled: true },
-    { id: 5, icon: '⭐', title: 'Günlük Giriş Bonusu', reward: 200, daily: true, enabled: true },
-    { id: 6, icon: '👥', title: '5 Arkadaş Davet Et', reward: 2500, referralRequired: 5, enabled: true }
-];
-
-function saveTasksToStorage() {
-    try {
-        localStorage.setItem('adminTasks', JSON.stringify(tasks));
-    } catch (e) {
-        console.warn('Error saving tasks:', e);
-    }
+.form-checkbox a:hover {
+    text-decoration: underline;
 }
 
-function loadTasksFromStorage() {
-    try {
-        const saved = localStorage.getItem('adminTasks');
-        if (saved) {
-            const savedTasks = JSON.parse(saved);
-            savedTasks.forEach((savedTask, index) => {
-                if (tasks[index]) {
-                    tasks[index] = { ...tasks[index], ...savedTask };
-                }
-            });
-        }
-    } catch (e) {
-        console.warn('Error loading tasks:', e);
-    }
+.btn-register {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 8px;
 }
 
-loadTasksFromStorage();
+.btn-register:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
 
-function renderTasks() {
-    const tasksList = document.getElementById('tasksList');
-    const enabledTasks = tasks.filter(t => t.enabled);
-    
-    tasksList.innerHTML = `
-        <div class="points-display">
-            <div class="points-big">🎁 ${gameState.points}</div>
-            <div class="points-label">Toplam Puanın</div>
-        </div>
-        ${gameState.isAdmin ? '<button class="btn-primary" onclick="showAdminTaskPanel()" style="margin-bottom: 20px;">⚙️ Görevleri Yönet</button>' : ''}
-    ` + enabledTasks.map(task => {
-        const completed = gameState.completedTasks.includes(task.id);
-        const canComplete = task.referralRequired ? gameState.referrals >= task.referralRequired : true;
-        return `
-            <div class="task-card">
-                <div class="task-icon">${task.icon}</div>
-                <div class="task-info">
-                    <div class="task-title">${task.title}</div>
-                    <div class="task-reward">+${task.reward.toLocaleString()} puan</div>
-                </div>
-                <button class="task-btn ${completed ? 'completed' : ''}" 
-                        onclick="completeTask(${task.id})"
-                        ${completed || !canComplete ? 'disabled' : ''}>
-                    ${completed ? '✓ Tamamlandı' : 'Başla'}
-                </button>
-            </div>
-        `;
-    }).join('');
-}
-
-function completeTask(taskId) {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task || gameState.completedTasks.includes(taskId)) return;
-    
-    if (task.link) {
-        window.open(task.link, '_blank');
-    }
-    
-    setTimeout(() => {
-        gameState.points += task.reward;
-        gameState.completedTasks.push(taskId);
-        alert(`Tebrikler! ${task.reward} puan kazandın!`);
-        updateUI();
-        saveGame();
-        renderTasks();
-    }, 2000);
-}
-
-// My Accounts
-function renderMyAccounts() {
-    const myAccountsList = document.getElementById('myAccountsList');
-    
-    // Admin ise tüm ilanları, değilse sadece kendi ilanlarını göster
-    const myOwnAccounts = gameState.isAdmin 
-        ? accounts 
-        : accounts.filter(a => a.sellerId === currentUserId);
-    
-    const myAccountsHTML = myOwnAccounts.length > 0 ? `
-        ${gameState.isAdmin ? '<h3 style="margin: 20px 0 10px 0;">Tüm İlanlar (Admin)</h3>' : '<h3 style="margin: 20px 0 10px 0;">Satışa Çıkardığın Hesaplar</h3>'}
-        ${myOwnAccounts.map(acc => {
-            const isOwner = acc.sellerId === currentUserId;
-            return `
-            <div class="my-account-card ${!isOwner ? 'other-user' : ''}">
-                <div class="account-info">
-                    <div><strong>Seviye ${acc.level}</strong> - ${acc.tier}</div>
-                    <div>💎 ${acc.uc} UC | 👕 ${acc.skins} Skin | 👁️ ${acc.views || 0}</div>
-                    <div class="account-price">${acc.price} ${acc.priceType}</div>
-                    ${!isOwner ? `<div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">Satıcı: @${acc.sellerUsername}</div>` : ''}
-                </div>
-                <div class="my-account-actions">
-                    <button class="btn-edit" onclick="editAccount(${acc.id})">✏️</button>
-                    <button class="btn-feature" onclick="toggleFeaturedAccount(${acc.id})">${acc.featured ? '⭐' : '☆'}</button>
-                    <button class="btn-remove" onclick="deleteAccount(${acc.id})">🗑️</button>
-                </div>
-            </div>
-        `}).join('')}
-    ` : '';
-    
-    const purchasedHTML = gameState.purchasedAccounts.length > 0 ? `
-        <h3 style="margin: 20px 0 10px 0;">Satın Aldığın Hesaplar</h3>
-        ${gameState.purchasedAccounts.map(acc => `
-            <div class="my-account-card purchased">
-                <div class="account-info">
-                    <div><strong>Seviye ${acc.level}</strong> - ${acc.tier}</div>
-                    <div>💎 ${acc.uc} UC | 👕 ${acc.skins} Skin</div>
-                    <div style="font-size: 12px; opacity: 0.8;">Satıcı: @${acc.sellerUsername}</div>
-                </div>
-            </div>
-        `).join('')}
-    ` : '';
-    
-    if (myOwnAccounts.length === 0 && gameState.purchasedAccounts.length === 0) {
-        myAccountsList.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">📦</div>
-                <div class="empty-text">Henüz hesabın yok</div>
-                <button class="btn-primary" onclick="showAddAccountModal()">
-                    ➕ Hesap Ekle
-                </button>
-            </div>
-        `;
-    } else {
-        myAccountsList.innerHTML = `
-            <button class="btn-primary" onclick="showAddAccountModal()" style="margin-bottom: 20px;">
-                ➕ Yeni Hesap Ekle
-            </button>
-            ${myAccountsHTML}
-            ${purchasedHTML}
-        `;
-    }
+.btn-register:active {
+    transform: translateY(0);
 }
 
-// Add Account Modal
-function showAddAccountModal() {
-    const modal = `
-        <div class="modal" id="addAccountModal">
-            <div class="modal-content">
-                <h2>➕ Hesap Ekle</h2>
-                <input type="number" id="accLevel" placeholder="Seviye (örn: 75)" class="input-field">
-                <input type="text" id="accTier" placeholder="Tier (örn: Ace, Crown, Conqueror)" class="input-field">
-                <input type="number" id="accUC" placeholder="UC Miktarı" class="input-field">
-                <input type="number" id="accSkins" placeholder="Skin Sayısı" class="input-field">
-                <input type="number" id="accPrice" placeholder="Fiyat" class="input-field">
-                <select id="accPriceType" class="input-field">
-                    <option value="TL">TL</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                </select>
-                <textarea id="accDesc" placeholder="Açıklama (örn: Full eşya, mythic skinler)" class="input-field"></textarea>
-                
-                <div class="image-upload-section">
-                    <label class="image-upload-label">
-                        📷 Ekran Görüntüleri Ekle (Maks 5)
-                        <input type="file" id="accImages" accept="image/*" multiple class="image-upload-input" onchange="previewImages(event)">
-                    </label>
-                    <div class="image-preview-grid" id="imagePreviewGrid"></div>
-                </div>
-                
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="addAccount()">Ekle</button>
-                    <button class="btn-secondary" onclick="closeModal()">İptal</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-let selectedImages = [];
-
-function previewImages(event) {
-    const files = Array.from(event.target.files);
-    const previewGrid = document.getElementById('imagePreviewGrid');
-    
-    if (files.length + selectedImages.length > 5) {
-        alert('Maksimum 5 görsel ekleyebilirsin!');
-        return;
-    }
-    
-    files.forEach(file => {
-        if (file.size > 2 * 1024 * 1024) {
-            alert('Görsel boyutu 2MB\'dan küçük olmalı!');
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            selectedImages.push(e.target.result);
-            renderImagePreviews();
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
-function renderImagePreviews() {
-    const previewGrid = document.getElementById('imagePreviewGrid');
-    if (!previewGrid) return;
-    
-    previewGrid.innerHTML = selectedImages.map((img, index) => `
-        <div class="image-preview-item">
-            <img src="${img}" alt="Preview ${index + 1}">
-            <button class="image-remove-btn" onclick="removeImage(${index})">✕</button>
-        </div>
-    `).join('');
-}
-
-function removeImage(index) {
-    selectedImages.splice(index, 1);
-    renderImagePreviews();
-}
-
-function addAccount() {
-    const newAccount = {
-        id: Date.now(),
-        seller: currentUsername,
-        sellerId: currentUserId,
-        sellerUsername: currentUsername,
-        level: parseInt(document.getElementById('accLevel').value),
-        tier: document.getElementById('accTier').value,
-        uc: parseInt(document.getElementById('accUC').value),
-        skins: parseInt(document.getElementById('accSkins').value),
-        price: parseInt(document.getElementById('accPrice').value),
-        priceType: document.getElementById('accPriceType').value,
-        description: document.getElementById('accDesc').value,
-        image: '🎮',
-        featured: false,
-        createdAt: Date.now(),
-        views: 0,
-        verified: false,
-        images: [...selectedImages]
-    };
-    
-    if (!newAccount.level || !newAccount.tier || !newAccount.price) {
-        alert('Lütfen tüm alanları doldur!');
-        return;
-    }
-    
-    gameState.myAccounts.push(newAccount);
-    accounts.push(newAccount);
-    saveGame();
-    saveAccounts();
-    
-    // Save to Firebase
-    if (typeof saveAccountToFirebase === 'function') {
-        saveAccountToFirebase(newAccount).then(success => {
-            if (success) {
-                console.log('✅ Account synced to Firebase');
-            }
-        });
-    }
-    
-    selectedImages = [];
-    closeModal();
-    renderMyAccounts();
-    renderAccounts();
-    addNotification('✅ Hesabın eklendi ve satışa çıkarıldı!');
+.registration-footer {
+    text-align: center;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 14px;
+    color: #8b8d98;
 }
 
-function removeAccount(accountId) {
-    gameState.myAccounts = gameState.myAccounts.filter(a => a.id !== accountId);
-    accounts = accounts.filter(a => a.id !== accountId);
-    saveGame();
-    renderMyAccounts();
-    renderAccounts();
+.registration-footer a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
 }
 
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId || 'addAccountModal');
-    if (modal) modal.remove();
+.registration-footer a:hover {
+    text-decoration: underline;
 }
 
-// Friends/Referral
-function renderFriends() {
-    document.getElementById('totalReferrals').textContent = gameState.referrals;
-    document.getElementById('referralEarnings').textContent = (gameState.referrals * 1000).toLocaleString();
+/* Terms Content */
+.terms-content {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 16px;
+    background: #1a1d29;
+    border-radius: 12px;
+    margin-bottom: 16px;
 }
 
-document.getElementById('inviteBtn').addEventListener('click', () => {
-    const botUsername = 'coindrop_game_bot'; // Bot username'inizi buraya
-    const userId = tg.initDataUnsafe.user?.id || '123456';
-    const inviteLink = `https://t.me/${botUsername}?start=ref_${userId}`;
-    
-    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('PUBG hesap al/sat! Bedava hesap kazan! 🎮')}`);
-});
-
-// Navigation
-const navItems = document.querySelectorAll('.nav-item');
-const pages = {
-    home: document.querySelector('.main-content'),
-    favorites: document.getElementById('favoritesPage'),
-    tasks: document.getElementById('tasksPage'),
-    myaccounts: document.getElementById('myaccountsPage'),
-    friends: document.getElementById('friendsPage'),
-    notifications: document.getElementById('notificationsPage'),
-    stats: document.getElementById('statsPage'),
-    profile: document.getElementById('profilePage')
-};
-
-navItems.forEach(item => {
-    item.addEventListener('click', () => {
-        const page = item.dataset.page;
-        
-        navItems.forEach(nav => nav.classList.remove('active'));
-        item.classList.add('active');
-        
-        Object.keys(pages).forEach(key => {
-            if (key === page) {
-                pages[key].style.display = key === 'home' ? 'flex' : 'block';
-            } else {
-                pages[key].style.display = 'none';
-            }
-        });
-        
-        if (page === 'home') renderAccounts();
-        if (page === 'favorites') renderFavorites();
-        if (page === 'tasks') renderTasks();
-        if (page === 'myaccounts') renderMyAccounts();
-        if (page === 'friends') renderFriends();
-    });
-});
-
-// Initial render
-renderAccounts();
-renderTasks();
-renderMyAccounts();
-renderFriends();
-
-
-// Admin Task Management
-function showAdminTaskPanel() {
-    const modal = `
-        <div class="modal admin-modal" id="adminTaskModal">
-            <div class="admin-panel">
-                <div class="admin-header">
-                    <h2>⚙️ Görev Yönetimi</h2>
-                    <button class="close-btn" onclick="closeModal('adminTaskModal')">✕</button>
-                </div>
-                <div class="admin-content">
-                    ${tasks.map(task => `
-                        <div class="admin-card ${!task.enabled ? 'disabled' : ''}">
-                            <div class="admin-card-header">
-                                <div class="admin-card-icon">${task.icon}</div>
-                                <div class="admin-card-info">
-                                    <div class="admin-card-title">${task.title}</div>
-                                    <div class="admin-card-subtitle">${task.reward} puan • ${task.link ? 'Link var' : 'Link yok'}</div>
-                                </div>
-                                <div class="admin-card-status">
-                                    ${task.enabled ? '<span class="status-badge active">Aktif</span>' : '<span class="status-badge inactive">Pasif</span>'}
-                                </div>
-                            </div>
-                            <div class="admin-card-actions">
-                                <button class="action-btn edit" onclick="editTask(${task.id})" title="Düzenle">
-                                    <span>✏️</span> Düzenle
-                                </button>
-                                <button class="action-btn ${task.enabled ? 'disable' : 'enable'}" onclick="toggleTask(${task.id})" title="${task.enabled ? 'Kaldır' : 'Aktifleştir'}">
-                                    <span>${task.enabled ? '🚫' : '✅'}</span> ${task.enabled ? 'Kaldır' : 'Aktifleştir'}
-                                </button>
-                                ${task.enabled ? `<button class="action-btn pin" onclick="pinTask(${task.id})" title="Sabitle"><span>📌</span> Sabitle</button>` : ''}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                <button class="btn-add-new" onclick="addNewTask()">
-                    <span>➕</span> Yeni Görev Ekle
-                </button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function toggleTaskMenu(taskId) {
-    const menu = document.getElementById(`taskMenu${taskId}`);
-    // Diğer menüleri kapat
-    document.querySelectorAll('.task-menu').forEach(m => {
-        if (m.id !== `taskMenu${taskId}`) m.style.display = 'none';
-    });
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-}
-
-function editTask(taskId) {
-    const task = tasks.find(t => t.id === taskId);
-    const modal = `
-        <div class="modal" id="editTaskModal">
-            <div class="modal-content">
-                <h2>✏️ Görevi Düzenle</h2>
-                <input type="text" id="editTaskTitle" value="${task.title}" placeholder="Görev Başlığı" class="input-field">
-                <input type="text" id="editTaskIcon" value="${task.icon}" placeholder="Emoji (örn: 📱)" class="input-field">
-                <input type="number" id="editTaskReward" value="${task.reward}" placeholder="Ödül Puanı" class="input-field">
-                <input type="text" id="editTaskLink" value="${task.link || ''}" placeholder="Link (opsiyonel)" class="input-field">
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="saveTaskEdit(${taskId})">Kaydet</button>
-                    <button class="btn-secondary" onclick="closeEditModal()">İptal</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function saveTaskEdit(taskId) {
-    const task = tasks.find(t => t.id === taskId);
-    task.title = document.getElementById('editTaskTitle').value;
-    task.icon = document.getElementById('editTaskIcon').value;
-    task.reward = parseInt(document.getElementById('editTaskReward').value);
-    task.link = document.getElementById('editTaskLink').value;
-    
-    saveTasksToStorage();
-    closeEditModal();
-    closeModal();
-    renderTasks();
-    alert('Görev güncellendi!');
-}
-
-function closeEditModal() {
-    const modal = document.getElementById('editTaskModal');
-    if (modal) modal.remove();
-}
-
-function toggleTask(taskId) {
-    const task = tasks.find(t => t.id === taskId);
-    task.enabled = !task.enabled;
-    saveTasksToStorage();
-    closeModal();
-    renderTasks();
-    alert(task.enabled ? 'Görev aktifleştirildi!' : 'Görev kaldırıldı!');
-}
-
-function pinTask(taskId) {
-    const taskIndex = tasks.findIndex(t => t.id === taskId);
-    if (taskIndex > 0) {
-        const task = tasks.splice(taskIndex, 1)[0];
-        tasks.unshift(task);
-        saveTasksToStorage();
-        closeModal();
-        renderTasks();
-        alert('Görev en üste sabitlendi!');
-    }
+.terms-content h3 {
+    font-size: 16px;
+    margin: 16px 0 8px 0;
+    color: #667eea;
 }
 
-function addNewTask() {
-    const modal = `
-        <div class="modal" id="addTaskModal">
-            <div class="modal-content">
-                <h2>➕ Yeni Görev Ekle</h2>
-                <input type="text" id="newTaskTitle" placeholder="Görev Başlığı" class="input-field">
-                <input type="text" id="newTaskIcon" placeholder="Emoji (örn: 🎮)" class="input-field">
-                <input type="number" id="newTaskReward" placeholder="Ödül Puanı" class="input-field">
-                <input type="text" id="newTaskLink" placeholder="Link (opsiyonel)" class="input-field">
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="saveNewTask()">Ekle</button>
-                    <button class="btn-secondary" onclick="closeAddTaskModal()">İptal</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function saveNewTask() {
-    const newTask = {
-        id: Date.now(),
-        title: document.getElementById('newTaskTitle').value,
-        icon: document.getElementById('newTaskIcon').value,
-        reward: parseInt(document.getElementById('newTaskReward').value),
-        link: document.getElementById('newTaskLink').value,
-        enabled: true
-    };
-    
-    if (!newTask.title || !newTask.icon || !newTask.reward) {
-        alert('Lütfen tüm alanları doldurun!');
-        return;
-    }
-    
-    tasks.push(newTask);
-    saveTasksToStorage();
-    closeAddTaskModal();
-    closeModal();
-    renderTasks();
-    alert('Yeni görev eklendi!');
-}
-
-function closeAddTaskModal() {
-    const modal = document.getElementById('addTaskModal');
-    if (modal) modal.remove();
-}
-
-// Admin Account Management
-function renderAccounts() {
-    const accountsList = document.getElementById('accountsList');
-    const filteredAccounts = typeof filterAndSortAccounts === 'function' ? filterAndSortAccounts() : accounts;
-    
-    if (filteredAccounts.length === 0) {
-        accountsList.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">Sonuç bulunamadı</div></div>';
-        return;
-    }
-    
-    accountsList.innerHTML = filteredAccounts.map(acc => {
-        const isOwner = acc.sellerId === currentUserId;
-        const canEdit = isOwner || gameState.isAdmin;
-        const isFav = isFavorite(acc.id);
-        const hasImages = acc.images && acc.images.length > 0;
-        
-        return `
-        <div class="account-card ${acc.featured ? 'featured' : ''}" onclick="showAccountDetail(${acc.id})">
-            <button class="favorite-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${acc.id})" title="${isFav ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}">
-                ${isFav ? '❤️' : '🤍'}
-            </button>
-            ${hasImages ? `
-                <div class="account-image" style="background-image: url('${acc.images[0]}')">
-                    ${acc.images.length > 1 ? `<div class="image-count">📷 ${acc.images.length}</div>` : ''}
-                </div>
-            ` : `<div class="account-badge">${acc.image}</div>`}
-            ${acc.verified ? '<div class="verified-badge" title="Doğrulanmış Satıcı">✓</div>' : ''}
-            ${acc.featured ? '<div class="vitrin-label">Vitrin İlanı</div>' : ''}
-            ${acc.isGift ? '<div class="gift-badge">🎁 HEDİYE</div>' : ''}
-            <div class="account-info">
-                <div class="account-tier">${acc.tier} ${acc.verified ? '<span class="verified-icon" title="Doğrulanmış">✓</span>' : ''}</div>
-                <div class="account-level">Seviye ${acc.level}</div>
-                <div class="account-stats">
-                    <span>💎 ${acc.uc} UC</span>
-                    <span>👕 ${acc.skins} Skin</span>
-                    <span>👁️ ${acc.views || 0}</span>
-                </div>
-                <div class="account-desc">${acc.description}</div>
-                <div class="account-seller">
-                    Satıcı: @${acc.sellerUsername || acc.seller}
-                    ${!isOwner ? `<button class="btn-message" onclick="event.stopPropagation(); contactSeller('${acc.sellerUsername}', ${acc.id})">�</button>` : ''}
-                </div>
-            </div>
-            <div class="account-footer">
-                <div class="account-price">
-                    ${acc.priceType === 'TL' ? '💰' : '🎁'} ${acc.price} ${acc.priceType}
-                </div>
-                <div class="account-actions">
-                    ${!isOwner && !acc.isGift ? `<button class="btn-offer" onclick="event.stopPropagation(); makeOffer(${acc.id})">💵</button>` : ''}
-                    <button class="btn-buy" onclick="event.stopPropagation(); buyAccount(${acc.id})">
-                        ${acc.isGift ? '🎁' : '🛒'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    `}).join('');
-}
-
-function contactSeller(username, accountId) {
-    const account = accounts.find(a => a.id === accountId);
-    const message = `Merhaba! "${account.tier} Seviye ${account.level}" ilanınla ilgileniyorum.`;
-    
-    if (tg.openTelegramLink) {
-        tg.openTelegramLink(`https://t.me/${username}?text=${encodeURIComponent(message)}`);
-    } else {
-        window.open(`https://t.me/${username}?text=${encodeURIComponent(message)}`, '_blank');
-    }
+.terms-content h3:first-child {
+    margin-top: 0;
 }
 
-function toggleCardMenu(accountId) {
-    const menu = document.getElementById(`cardMenu${accountId}`);
-    const allMenus = document.querySelectorAll('.card-menu');
-    
-    // Diğer menüleri kapat
-    allMenus.forEach(m => {
-        if (m.id !== `cardMenu${accountId}`) {
-            m.style.display = 'none';
-        }
-    });
-    
-    // Bu menüyü aç/kapat
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-}
-
-// Menüleri dışarı tıklandığında kapat
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.card-menu-btn') && !e.target.closest('.card-menu')) {
-        document.querySelectorAll('.card-menu').forEach(menu => {
-            menu.style.display = 'none';
-        });
-    }
-});
-
-function toggleAccountMenu(accountId) {
-    const menu = document.getElementById(`accountMenu${accountId}`);
-    document.querySelectorAll('.task-menu').forEach(m => {
-        if (m.id !== `accountMenu${accountId}`) m.style.display = 'none';
-    });
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-}
-
-function editAccount(accountId) {
-    const acc = accounts.find(a => a.id === accountId);
-    const canEdit = acc.sellerId === currentUserId || gameState.isAdmin;
-    
-    if (!canEdit) {
-        alert('Bu ilanı sadece sahibi düzenleyebilir!');
-        return;
-    }
-    
-    const modal = `
-        <div class="modal" id="editAccountModal">
-            <div class="modal-content">
-                <h2>✏️ Hesabı Düzenle</h2>
-                <input type="number" id="editAccLevel" value="${acc.level}" placeholder="Seviye" class="input-field">
-                <input type="text" id="editAccTier" value="${acc.tier}" placeholder="Tier" class="input-field">
-                <input type="number" id="editAccUC" value="${acc.uc}" placeholder="UC" class="input-field">
-                <input type="number" id="editAccSkins" value="${acc.skins}" placeholder="Skin Sayısı" class="input-field">
-                <input type="number" id="editAccPrice" value="${acc.price}" placeholder="Fiyat" class="input-field">
-                <textarea id="editAccDesc" class="input-field">${acc.description}</textarea>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="saveAccountEdit(${accountId})">Kaydet</button>
-                    <button class="btn-secondary" onclick="closeEditAccountModal()">İptal</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function saveAccountEdit(accountId) {
-    const acc = accounts.find(a => a.id === accountId);
-    acc.level = parseInt(document.getElementById('editAccLevel').value);
-    acc.tier = document.getElementById('editAccTier').value;
-    acc.uc = parseInt(document.getElementById('editAccUC').value);
-    acc.skins = parseInt(document.getElementById('editAccSkins').value);
-    acc.price = parseInt(document.getElementById('editAccPrice').value);
-    acc.description = document.getElementById('editAccDesc').value;
-    
-    saveAccounts();
-    closeEditAccountModal();
-    renderAccounts();
-    alert('Hesap güncellendi!');
+.terms-content p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #8b8d98;
+    margin-bottom: 12px;
 }
 
-function closeEditAccountModal() {
-    const modal = document.getElementById('editAccountModal');
-    if (modal) modal.remove();
+.terms-content ul {
+    margin: 12px 0;
+    padding-left: 24px;
 }
 
-function deleteAccount(accountId) {
-    const account = accounts.find(a => a.id === accountId);
-    const canDelete = account.sellerId === currentUserId || gameState.isAdmin;
-    
-    if (!canDelete) {
-        alert('Bu ilanı sadece sahibi silebilir!');
-        return;
-    }
-    
-    if (confirm('Bu hesabı silmek istediğinden emin misin?')) {
-        const index = accounts.findIndex(a => a.id === accountId);
-        accounts.splice(index, 1);
-        saveAccounts();
-        renderAccounts();
-        alert('Hesap silindi!');
-    }
+.terms-content li {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #8b8d98;
+    margin-bottom: 8px;
 }
 
-function toggleFeaturedAccount(accountId) {
-    const acc = accounts.find(a => a.id === accountId);
-    acc.featured = !acc.featured;
-    saveAccounts();
-    renderAccounts();
-    addNotification(acc.featured ? '⭐ Hesap öne çıkarıldı!' : '☆ Öne çıkarma kaldırıldı!');
+/* Verification System */
+.verification-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
+.verification-method-btn {
+    background: #23263a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
 
-// Search & Filter Functions
+.verification-method-btn:hover {
+    background: #2a2d3e;
+    border-color: #667eea;
+    transform: translateX(4px);
+}
 
-function toggleFilters() {
-    const panel = document.getElementById('filterPanel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+.verification-icon {
+    font-size: 32px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
 }
 
-function applyFilters() {
-    filters.search = document.getElementById('searchInput').value.toLowerCase();
-    filters.category = document.getElementById('categoryFilter').value;
-    filters.minPrice = parseInt(document.getElementById('minPrice').value) || null;
-    filters.maxPrice = parseInt(document.getElementById('maxPrice').value) || null;
-    filters.minLevel = parseInt(document.getElementById('minLevel').value) || null;
-    filters.maxLevel = parseInt(document.getElementById('maxLevel').value) || null;
-    filters.tier = document.getElementById('tierFilter').value;
-    filters.sort = document.getElementById('sortFilter').value;
-    
-    renderAccounts();
-    toggleFilters();
-}
-
-function resetFilters() {
-    filters = {
-        search: '',
-        category: '',
-        minPrice: null,
-        maxPrice: null,
-        minLevel: null,
-        maxLevel: null,
-        tier: '',
-        sort: 'newest'
-    };
-    
-    document.getElementById('searchInput').value = '';
-    document.getElementById('categoryFilter').value = '';
-    document.getElementById('minPrice').value = '';
-    document.getElementById('maxPrice').value = '';
-    document.getElementById('minLevel').value = '';
-    document.getElementById('maxLevel').value = '';
-    document.getElementById('tierFilter').value = '';
-    document.getElementById('sortFilter').value = 'newest';
-    
-    renderAccounts();
-}
-
-// Real-time search
-document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            filters.search = e.target.value.toLowerCase();
-            renderAccounts();
-        });
-    }
-});
+.verification-info {
+    flex: 1;
+}
 
+.verification-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: white;
+}
 
-// Back button functionality
-function goBack(fromPage) {
-    console.log('goBack called from:', fromPage);
-    
-    // Hide current page
-    const currentPage = document.getElementById(fromPage + 'Page');
-    if (currentPage) {
-        currentPage.style.display = 'none';
-    }
-    
-    // Show home page
-    const mainContent = document.querySelector('.main-content');
-    if (mainContent) {
-        mainContent.style.display = 'flex';
-        console.log('Main content display set to flex');
-    }
-    
-    // Update nav
-    navItems.forEach(nav => nav.classList.remove('active'));
-    const homeNav = document.querySelector('[data-page="home"]');
-    if (homeNav) {
-        homeNav.classList.add('active');
-    }
-    
-    // Re-render accounts to ensure they display
-    console.log('Calling renderAccounts...');
-    renderAccounts();
-    console.log('Accounts rendered, total:', accounts.length);
+.verification-subtitle {
+    font-size: 12px;
+    color: #8b8d98;
 }
 
+.verification-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-top: 6px;
+}
 
-// Favorites Page
-function renderFavorites() {
-    const favoritesList = document.getElementById('favoritesList');
-    const favoriteAccounts = accounts.filter(a => gameState.favorites.includes(a.id));
-    
-    if (favoriteAccounts.length === 0) {
-        favoritesList.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">❤️</div>
-                <div class="empty-text">Henüz favori hesabın yok</div>
-                <button class="btn-primary" onclick="showPage('home')">İlanları Gör</button>
-            </div>
-        `;
-        return;
-    }
-    
-    favoritesList.innerHTML = favoriteAccounts.map(acc => {
-        const isOwner = acc.sellerId === currentUserId;
-        return `
-        <div class="account-card ${acc.featured ? 'featured' : ''}">
-            <button class="favorite-btn active" onclick="event.stopPropagation(); toggleFavorite(${acc.id})">❤️</button>
-            <div class="account-badge">${acc.image}</div>
-            ${acc.verified ? '<div class="verified-badge">✓</div>' : ''}
-            ${acc.featured ? '<div class="vitrin-label">Vitrin İlanı</div>' : ''}
-            <div class="account-info">
-                <div class="account-tier">${acc.tier}</div>
-                <div class="account-level">Seviye ${acc.level}</div>
-                <div class="account-stats">
-                    <span>💎 ${acc.uc} UC</span>
-                    <span>👕 ${acc.skins} Skin</span>
-                </div>
-                <div class="account-desc">${acc.description}</div>
-            </div>
-            <div class="account-footer">
-                <div class="account-price">${acc.priceType === 'TL' ? '💰' : '🎁'} ${acc.price} ${acc.priceType}</div>
-                <button class="btn-buy" onclick="buyAccount(${acc.id})">${acc.isGift ? '🎁' : '🛒'}</button>
-            </div>
-        </div>
-        `;
-    }).join('');
-}
-
-// Notifications Page
-function showNotifications() {
-    showPage('notifications');
-    renderNotifications();
-}
-
-function renderNotifications() {
-    const notificationsList = document.getElementById('notificationsList');
-    
-    // Mark all as read
-    gameState.notifications.forEach(n => n.read = true);
-    saveGame();
-    updateNotificationBadge();
-    
-    if (gameState.notifications.length === 0) {
-        notificationsList.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">🔔</div>
-                <div class="empty-text">Henüz bildirim yok</div>
-            </div>
-        `;
-        return;
-    }
-    
-    notificationsList.innerHTML = gameState.notifications.map(notif => {
-        const date = new Date(notif.timestamp);
-        const timeAgo = getTimeAgo(notif.timestamp);
-        return `
-        <div class="notification-item ${notif.type}">
-            <div class="notification-content">
-                <div class="notification-message">${notif.message}</div>
-                <div class="notification-time">${timeAgo}</div>
-            </div>
-            <button class="notification-delete" onclick="deleteNotification(${notif.id})">✕</button>
-        </div>
-        `;
-    }).join('');
-}
-
-function deleteNotification(notifId) {
-    gameState.notifications = gameState.notifications.filter(n => n.id !== notifId);
-    saveGame();
-    renderNotifications();
-}
-
-function getTimeAgo(timestamp) {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) return 'Az önce';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} dakika önce`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} saat önce`;
-    const days = Math.floor(hours / 24);
-    return `${days} gün önce`;
-}
-
-// Statistics Page
-function showStats() {
-    showPage('stats');
-    renderStats();
-}
-
-function renderStats() {
-    const statsContent = document.getElementById('statsContent');
-    const myAccounts = accounts.filter(a => a.sellerId === currentUserId);
-    const totalViews = myAccounts.reduce((sum, acc) => sum + (acc.views || 0), 0);
-    const totalSales = gameState.purchasedAccounts.length;
-    const totalRevenue = myAccounts.reduce((sum, acc) => sum + (acc.price || 0), 0);
-    
-    statsContent.innerHTML = `
-        <div class="stats-grid">
-            <div class="stat-box">
-                <div class="stat-box-value">${myAccounts.length}</div>
-                <div class="stat-box-label">Aktif İlan</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-box-value">${totalViews}</div>
-                <div class="stat-box-label">Toplam Görüntülenme</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-box-value">${totalSales}</div>
-                <div class="stat-box-label">Satın Alınan</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-box-value">${totalRevenue} TL</div>
-                <div class="stat-box-label">Potansiyel Gelir</div>
-            </div>
-        </div>
-        
-        <h3 style="margin: 20px 0 10px 0;">En Çok Görüntülenen İlanlar</h3>
-        ${myAccounts.sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5).map(acc => `
-            <div class="stat-item">
-                <div class="stat-item-info">
-                    <div class="stat-item-title">${acc.tier} - Seviye ${acc.level}</div>
-                    <div class="stat-item-subtitle">${acc.views || 0} görüntülenme</div>
-                </div>
-                <div class="stat-item-value">${acc.price} ${acc.priceType}</div>
-            </div>
-        `).join('')}
-        
-        <h3 style="margin: 20px 0 10px 0;">Favori İstatistikleri</h3>
-        <div class="stat-item">
-            <div class="stat-item-info">
-                <div class="stat-item-title">Favorilere Eklenen İlanların</div>
-            </div>
-            <div class="stat-item-value">${myAccounts.filter(a => gameState.favorites.includes(a.id)).length}</div>
-        </div>
-    `;
-}
-
-// Helper function to show pages
-function showPage(pageName) {
-    Object.keys(pages).forEach(key => {
-        if (pages[key]) {
-            pages[key].style.display = key === pageName ? (key === 'home' ? '' : 'block') : 'none';
-        }
-    });
-    
-    navItems.forEach(nav => nav.classList.remove('active'));
-    const activeNav = document.querySelector(`[data-page="${pageName}"]`);
-    if (activeNav) activeNav.classList.add('active');
+.verification-badge.recommended {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.verification-badge.premium {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
 }
 
-// Update initial render
-updateNotificationBadge();
+.verification-badge.instant {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+}
 
+.verification-arrow {
+    font-size: 24px;
+    color: #8b8d98;
+}
 
-// Account Detail Modal
-function showAccountDetail(accountId) {
-    incrementViews(accountId);
-    const acc = accounts.find(a => a.id === accountId);
-    if (!acc) return;
-    
-    const isOwner = acc.sellerId === currentUserId;
-    const isFav = isFavorite(acc.id);
-    const hasImages = acc.images && acc.images.length > 0;
-    
-    const modal = `
-        <div class="modal detail-modal" id="accountDetailModal">
-            <div class="detail-modal-content">
-                <button class="detail-close-btn" onclick="closeDetailModal()">✕</button>
-                
-                ${hasImages ? `
-                    <div class="detail-image-slider">
-                        <div class="detail-images" id="detailImages">
-                            ${acc.images.map((img, index) => `
-                                <img src="${img}" alt="Screenshot ${index + 1}" class="detail-image ${index === 0 ? 'active' : ''}" onclick="changeDetailImage(${index})">
-                            `).join('')}
-                        </div>
-                        ${acc.images.length > 1 ? `
-                            <div class="detail-image-dots">
-                                ${acc.images.map((_, index) => `
-                                    <span class="dot ${index === 0 ? 'active' : ''}" onclick="changeDetailImage(${index})"></span>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                ` : `
-                    <div class="detail-badge">${acc.image}</div>
-                `}
-                
-                <div class="detail-content">
-                    <div class="detail-header">
-                        <div>
-                            <h2>${acc.tier} ${acc.verified ? '<span class="verified-icon">✓</span>' : ''}</h2>
-                            <p class="detail-level">Seviye ${acc.level}</p>
-                        </div>
-                        <button class="favorite-btn-large ${isFav ? 'active' : ''}" onclick="toggleFavorite(${acc.id}); updateDetailFavorite(${acc.id})">
-                            ${isFav ? '❤️' : '🤍'}
-                        </button>
-                    </div>
-                    
-                    <div class="detail-stats">
-                        <div class="detail-stat">
-                            <div class="detail-stat-icon">💎</div>
-                            <div class="detail-stat-value">${acc.uc}</div>
-                            <div class="detail-stat-label">UC</div>
-                        </div>
-                        <div class="detail-stat">
-                            <div class="detail-stat-icon">👕</div>
-                            <div class="detail-stat-value">${acc.skins}</div>
-                            <div class="detail-stat-label">Skin</div>
-                        </div>
-                        <div class="detail-stat">
-                            <div class="detail-stat-icon">👁️</div>
-                            <div class="detail-stat-value">${acc.views || 0}</div>
-                            <div class="detail-stat-label">Görüntülenme</div>
-                        </div>
-                    </div>
-                    
-                    <div class="detail-description">
-                        <h3>Açıklama</h3>
-                        <p>${acc.description}</p>
-                    </div>
-                    
-                    <div class="detail-seller">
-                        <div class="detail-seller-info">
-                            <div class="detail-seller-avatar">👤</div>
-                            <div>
-                                <div class="detail-seller-name">@${acc.sellerUsername || acc.seller}</div>
-                                <div class="detail-seller-label">Satıcı</div>
-                            </div>
-                        </div>
-                        ${!isOwner ? `
-                            <button class="btn-contact" onclick="contactSeller('${acc.sellerUsername}', ${acc.id})">
-                                💬 Mesaj Gönder
-                            </button>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="detail-footer">
-                        <div class="detail-price">
-                            <div class="detail-price-label">Fiyat</div>
-                            <div class="detail-price-value">${acc.priceType === 'TL' ? '💰' : '🎁'} ${acc.price} ${acc.priceType}</div>
-                        </div>
-                        <div class="detail-actions">
-                            ${!isOwner && !acc.isGift ? `
-                                <button class="btn-offer-large" onclick="makeOffer(${acc.id})">
-                                    💵 Teklif Ver
-                                </button>
-                            ` : ''}
-                            <button class="btn-buy-large" onclick="buyAccount(${acc.id})">
-                                ${acc.isGift ? '🎁 Talep Et' : '🛒 Satın Al'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modal);
+.verification-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 24px 0;
 }
 
-let currentImageIndex = 0;
+.verification-step {
+    display: flex;
+    gap: 16px;
+}
 
-function changeDetailImage(index) {
-    const images = document.querySelectorAll('.detail-image');
-    const dots = document.querySelectorAll('.dot');
-    
-    images.forEach((img, i) => {
-        img.classList.toggle('active', i === index);
-    });
-    
-    dots.forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-    });
-    
-    currentImageIndex = index;
-}
-
-function updateDetailFavorite(accountId) {
-    const btn = document.querySelector('.favorite-btn-large');
-    if (btn) {
-        const isFav = isFavorite(accountId);
-        btn.classList.toggle('active', isFav);
-        btn.textContent = isFav ? '❤️' : '🤍';
-    }
+.step-number {
+    width: 32px;
+    height: 32px;
+    background: #667eea;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
 }
 
-function closeDetailModal() {
-    const modal = document.getElementById('accountDetailModal');
-    if (modal) modal.remove();
-    currentImageIndex = 0;
-}
-
-
-// Language System
-const translations = {
-    tr: {
-        store: 'Mağaza',
-        favorites: 'Favoriler',
-        earn: 'Kazan',
-        myAccounts: 'Hesaplarım',
-        friends: 'Arkadaşlar',
-        search: 'Ara...',
-        filter: 'Filtre',
-        category: 'Kategori',
-        all: 'Tümü',
-        onlySale: 'Sadece Satılık',
-        onlyGift: 'Sadece Hediye',
-        verified: 'Doğrulanmış Satıcılar',
-        price: 'Fiyat',
-        level: 'Seviye',
-        tier: 'Tier',
-        sort: 'Sıralama',
-        newest: 'En Yeni',
-        popular: 'En Popüler',
-        priceLow: 'Ucuz → Pahalı',
-        priceHigh: 'Pahalı → Ucuz',
-        levelHigh: 'Yüksek Seviye',
-        apply: 'Uygula',
-        reset: 'Sıfırla',
-        seller: 'Satıcı',
-        buy: 'Satın Al',
-        offer: 'Teklif Ver',
-        addToFavorites: 'Favorilere Ekle',
-        removeFromFavorites: 'Favorilerden Çıkar',
-        edit: 'Düzenle',
-        delete: 'Sil',
-        featured: 'Öne Çıkar',
-        addAccount: 'Hesap Ekle',
-        noResults: 'Sonuç bulunamadı',
-        notifications: 'Bildirimler',
-        stats: 'İstatistikler'
-    },
-    en: {
-        store: 'Store',
-        favorites: 'Favorites',
-        earn: 'Earn',
-        myAccounts: 'My Accounts',
-        friends: 'Friends',
-        search: 'Search...',
-        filter: 'Filter',
-        category: 'Category',
-        all: 'All',
-        onlySale: 'For Sale Only',
-        onlyGift: 'Gift Only',
-        verified: 'Verified Sellers',
-        price: 'Price',
-        level: 'Level',
-        tier: 'Tier',
-        sort: 'Sort',
-        newest: 'Newest',
-        popular: 'Most Popular',
-        priceLow: 'Price: Low to High',
-        priceHigh: 'Price: High to Low',
-        levelHigh: 'Level: High to Low',
-        apply: 'Apply',
-        reset: 'Reset',
-        seller: 'Seller',
-        buy: 'Buy',
-        offer: 'Make Offer',
-        addToFavorites: 'Add to Favorites',
-        removeFromFavorites: 'Remove from Favorites',
-        edit: 'Edit',
-        delete: 'Delete',
-        featured: 'Feature',
-        addAccount: 'Add Account',
-        noResults: 'No results found',
-        notifications: 'Notifications',
-        stats: 'Statistics'
-    }
-};
+.step-content {
+    flex: 1;
+}
 
-function t(key) {
-    return translations[gameState.language][key] || key;
+.step-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
 }
 
-function changeLanguage(lang) {
-    gameState.language = lang;
-    saveGame();
-    updateLanguageUI();
-    renderAccounts();
-    renderFavorites();
-    addNotification(lang === 'tr' ? '🌐 Dil Türkçe olarak değiştirildi' : '🌐 Language changed to English');
+.step-description {
+    font-size: 13px;
+    color: #8b8d98;
+    margin-bottom: 12px;
 }
 
-function updateLanguageUI() {
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.lang === gameState.language);
-    });
+.verification-input {
+    width: 100%;
+    background: #1a1d29;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 12px;
+    color: white;
+    font-size: 15px;
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 2px;
 }
 
-// Profile System
-function showProfile() {
-    showPage('profile');
-    renderProfile();
+.verification-input:focus {
+    outline: none;
+    border-color: #667eea;
 }
 
-function renderProfile() {
-    const profileContent = document.getElementById('profileContent');
-    const myAccounts = accounts.filter(a => a.sellerId === currentUserId);
-    const totalViews = myAccounts.reduce((sum, acc) => sum + (acc.views || 0), 0);
-    const totalSales = gameState.purchasedAccounts.length;
-    
-    profileContent.innerHTML = `
-        <div class="profile-header">
-            <div class="profile-avatar">👤</div>
-            <div class="profile-info">
-                <h2>${userProfile ? userProfile.fullName : currentUsername}</h2>
-                <p>@${userProfile ? userProfile.telegram : currentUsername}</p>
-                <p style="font-size: 12px; opacity: 0.6; margin-top: 4px;">
-                    ${gameState.isAdmin ? '👑 Admin' : '👤 Kullanıcı'}
-                    ${userProfile && userProfile.verified ? ' • ✓ Doğrulanmış' : ''}
-                </p>
-            </div>
-        </div>
-        
-        <div class="profile-stats">
-            <div class="profile-stat">
-                <div class="profile-stat-value">${myAccounts.length}</div>
-                <div class="profile-stat-label">Aktif İlan</div>
-            </div>
-            <div class="profile-stat">
-                <div class="profile-stat-value">${totalViews}</div>
-                <div class="profile-stat-label">Görüntülenme</div>
-            </div>
-            <div class="profile-stat">
-                <div class="profile-stat-value">${gameState.favorites.length}</div>
-                <div class="profile-stat-label">Favori</div>
-            </div>
-            <div class="profile-stat">
-                <div class="profile-stat-value">${gameState.points}</div>
-                <div class="profile-stat-label">Puan</div>
-            </div>
-        </div>
-        
-        ${userProfile ? `
-        <div class="profile-section">
-            <h3>👤 Hesap Bilgileri</h3>
-            <div class="settings-list">
-                <div class="setting-item">
-                    <div class="setting-info">
-                        <div class="setting-title">Ad Soyad</div>
-                        <div class="setting-subtitle">${userProfile.fullName}</div>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <div class="setting-info">
-                        <div class="setting-title">Telegram</div>
-                        <div class="setting-subtitle">@${userProfile.telegram}</div>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <div class="setting-info">
-                        <div class="setting-title">Kayıt Tarihi</div>
-                        <div class="setting-subtitle">${new Date(userProfile.registeredAt).toLocaleDateString('tr-TR')}</div>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <div class="setting-info">
-                        <div class="setting-title">Doğrulama Durumu</div>
-                        <div class="setting-subtitle">
-                            ${userProfile.verified 
-                                ? `✅ Doğrulanmış (${userProfile.verificationMethod === 'telegram' ? 'Telegram' : userProfile.verificationMethod === 'email' ? 'E-posta' : userProfile.verificationMethod === 'id' ? 'Kimlik' : 'Ödeme'})`
-                                : userProfile.verificationRejected
-                                    ? `❌ Reddedildi${userProfile.rejectionReason ? ': ' + userProfile.rejectionReason : ''}`
-                                    : userProfile.verificationPending 
-                                        ? '⏳ Onay Bekleniyor' 
-                                        : '❌ Doğrulanmamış'
-                            }
-                        </div>
-                    </div>
-                    ${!userProfile.verified && !userProfile.verificationPending ? `
-                        <button class="btn-verify" onclick="showVerificationOptions()">${userProfile.verificationRejected ? 'Tekrar Dene' : 'Doğrula'}</button>
-                    ` : ''}
-                </div>
-            </div>
-        </div>
-        ` : ''}
-        
-        <div class="profile-section">
-            <h3>⚙️ Ayarlar</h3>
-            <div class="settings-list">
-                <div class="setting-item">
-                    <div class="setting-info">
-                        <div class="setting-title">🌐 Dil / Language</div>
-                        <div class="setting-subtitle">Uygulama dilini değiştir</div>
-                    </div>
-                    <div class="language-switcher-inline">
-                        <button class="lang-btn ${gameState.language === 'tr' ? 'active' : ''}" onclick="changeLanguage('tr')">TR</button>
-                        <button class="lang-btn ${gameState.language === 'en' ? 'active' : ''}" onclick="changeLanguage('en')">EN</button>
-                    </div>
-                </div>
-                
-                <div class="setting-item" onclick="showNotificationSettings()">
-                    <div class="setting-info">
-                        <div class="setting-title">🔔 Bildirim Ayarları</div>
-                        <div class="setting-subtitle">Bildirimleri yönet</div>
-                    </div>
-                    <div class="setting-arrow">›</div>
-                </div>
-                
-                ${gameState.isAdmin ? `
-                <div class="setting-item" onclick="showIDVerificationApprovals()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                    <div class="setting-info">
-                        <div class="setting-title">� Kimlik Onayları</div>
-                        <div class="setting-subtitle" style="color: rgba(255,255,255,0.8);">Bekleyen doğrulama talepleri</div>
-                    </div>
-                    <div class="setting-arrow">›</div>
-                </div>
-                ` : ''}
-                
-                <div class="setting-item" onclick="showSearchHistory()">
-                    <div class="setting-info">
-                        <div class="setting-title">🔍 Arama Geçmişi</div>
-                        <div class="setting-subtitle">Son aramalarını gör</div>
-                    </div>
-                    <div class="setting-arrow">›</div>
-                </div>
-                
-                <div class="setting-item" onclick="showRecentlyViewed()">
-                    <div class="setting-info">
-                        <div class="setting-title">👁️ Son Görüntülenenler</div>
-                        <div class="setting-subtitle">Son baktığın ilanlar</div>
-                    </div>
-                    <div class="setting-arrow">›</div>
-                </div>
-                
-                <div class="setting-item" onclick="showSupport()">
-                    <div class="setting-info">
-                        <div class="setting-title">💬 Canlı Destek</div>
-                        <div class="setting-subtitle">Yardım al</div>
-                    </div>
-                    <div class="setting-arrow">›</div>
-                </div>
-            </div>
-        </div>
-        
-        <button class="btn-logout" onclick="logout()">🚪 Çıkış Yap</button>
-    `;
-}
-
-function logout() {
-    if (confirm('Çıkış yapmak istediğinden emin misin?')) {
-        // allUsers'ı kaydet (diğer kullanıcılar için)
-        const allUsers = localStorage.getItem('allUsers');
-        
-        // Tüm verileri sil
-        localStorage.clear();
-        
-        // allUsers'ı geri yükle
-        if (allUsers) {
-            localStorage.setItem('allUsers', allUsers);
-            console.log('✅ allUsers korundu');
-        }
-        
-        console.log('🚪 Çıkış yapıldı');
-        location.reload();
-    }
+.verification-code-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #1a1d29;
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px dashed #667eea;
 }
 
-// Search History
-let searchHistory = [];
-try {
-    searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-} catch (e) {
-    console.warn('Error loading search history:', e);
-}
-
-function addToSearchHistory(query) {
-    if (!query || query.length < 2) return;
-    try {
-        searchHistory = [query, ...searchHistory.filter(q => q !== query)].slice(0, 10);
-        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-    } catch (e) {
-        console.warn('Error saving search history:', e);
-    }
+.code-text {
+    flex: 1;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: #667eea;
+    text-align: center;
 }
 
-function showSearchHistory() {
-    const modal = `
-        <div class="modal" id="searchHistoryModal">
-            <div class="modal-content">
-                <h2>🔍 Arama Geçmişi</h2>
-                ${searchHistory.length > 0 ? `
-                    <div class="history-list">
-                        ${searchHistory.map(query => `
-                            <div class="history-item" onclick="searchFromHistory('${query}')">
-                                <span>🔍 ${query}</span>
-                                <button class="history-remove" onclick="event.stopPropagation(); removeFromHistory('${query}')">✕</button>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <button class="btn-secondary" onclick="clearSearchHistory()" style="margin-top: 16px;">Geçmişi Temizle</button>
-                ` : '<p style="text-align: center; opacity: 0.6;">Henüz arama yapmadın</p>'}
-                <button class="btn-primary" onclick="closeModal('searchHistoryModal')" style="margin-top: 16px;">Kapat</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function searchFromHistory(query) {
-    closeModal('searchHistoryModal');
-    showPage('home');
-    document.getElementById('searchInput').value = query;
-    filters.search = query.toLowerCase();
-    renderAccounts();
-}
-
-function removeFromHistory(query) {
-    try {
-        searchHistory = searchHistory.filter(q => q !== query);
-        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-        closeModal('searchHistoryModal');
-        showSearchHistory();
-    } catch (e) {
-        console.warn('Error removing from history:', e);
-    }
+.code-copy-btn {
+    background: rgba(102, 126, 234, 0.2);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-function clearSearchHistory() {
-    try {
-        searchHistory = [];
-        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-        closeModal('searchHistoryModal');
-        addNotification('🗑️ Arama geçmişi temizlendi');
-    } catch (e) {
-        console.warn('Error clearing search history:', e);
-    }
+.code-copy-btn:hover {
+    background: rgba(102, 126, 234, 0.3);
+    transform: scale(1.1);
 }
 
-// Recently Viewed
-let recentlyViewed = [];
-try {
-    recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-} catch (e) {
-    console.warn('Error loading recently viewed:', e);
+.btn-telegram {
+    background: #0088cc;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    width: 100%;
+    margin-top: 12px;
 }
 
-function addToRecentlyViewed(accountId) {
-    try {
-        recentlyViewed = [accountId, ...recentlyViewed.filter(id => id !== accountId)].slice(0, 20);
-        localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
-    } catch (e) {
-        console.warn('Error saving recently viewed:', e);
-    }
+.btn-telegram:hover {
+    background: #0077b3;
 }
 
-function showRecentlyViewed() {
-    const recentAccounts = recentlyViewed.map(id => accounts.find(a => a.id === id)).filter(a => a);
-    
-    const modal = `
-        <div class="modal" id="recentlyViewedModal">
-            <div class="modal-content" style="max-width: 600px;">
-                <h2>👁️ Son Görüntülenenler</h2>
-                ${recentAccounts.length > 0 ? `
-                    <div class="recent-grid">
-                        ${recentAccounts.map(acc => `
-                            <div class="recent-item" onclick="closeModal('recentlyViewedModal'); showAccountDetail(${acc.id})">
-                                <div class="recent-image">${acc.images && acc.images[0] ? `<img src="${acc.images[0]}" alt="">` : acc.image}</div>
-                                <div class="recent-info">
-                                    <div class="recent-title">${acc.tier} - Seviye ${acc.level}</div>
-                                    <div class="recent-price">${acc.price} ${acc.priceType}</div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <button class="btn-secondary" onclick="clearRecentlyViewed()" style="margin-top: 16px;">Geçmişi Temizle</button>
-                ` : '<p style="text-align: center; opacity: 0.6;">Henüz ilan görüntülemedin</p>'}
-                <button class="btn-primary" onclick="closeModal('recentlyViewedModal')" style="margin-top: 16px;">Kapat</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function clearRecentlyViewed() {
-    try {
-        recentlyViewed = [];
-        localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
-        closeModal('recentlyViewedModal');
-        addNotification('🗑️ Görüntüleme geçmişi temizlendi');
-    } catch (e) {
-        console.warn('Error clearing recently viewed:', e);
-    }
+.file-upload-btn {
+    display: inline-block;
+    background: #667eea;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    margin-top: 12px;
 }
 
-// Notification Settings
-let notificationSettings = {};
-try {
-    notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"newListings": true, "priceDrops": true, "messages": true, "offers": true}');
-} catch (e) {
-    console.warn('Error loading notification settings:', e);
-    notificationSettings = {"newListings": true, "priceDrops": true, "messages": true, "offers": true};
-}
-
-function showNotificationSettings() {
-    const modal = `
-        <div class="modal" id="notificationSettingsModal">
-            <div class="modal-content">
-                <h2>🔔 Bildirim Ayarları</h2>
-                <div class="settings-list">
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <div class="setting-title">🆕 Yeni İlanlar</div>
-                            <div class="setting-subtitle">Yeni ilan eklendiğinde bildir</div>
-                        </div>
-                        <label class="toggle">
-                            <input type="checkbox" ${notificationSettings.newListings ? 'checked' : ''} onchange="toggleNotification('newListings')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <div class="setting-title">💰 Fiyat Düşüşleri</div>
-                            <div class="setting-subtitle">Favorilerdeki fiyat düşünce bildir</div>
-                        </div>
-                        <label class="toggle">
-                            <input type="checkbox" ${notificationSettings.priceDrops ? 'checked' : ''} onchange="toggleNotification('priceDrops')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <div class="setting-title">💬 Mesajlar</div>
-                            <div class="setting-subtitle">Yeni mesaj geldiğinde bildir</div>
-                        </div>
-                        <label class="toggle">
-                            <input type="checkbox" ${notificationSettings.messages ? 'checked' : ''} onchange="toggleNotification('messages')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <div class="setting-title">💵 Teklifler</div>
-                            <div class="setting-subtitle">Teklif geldiğinde bildir</div>
-                        </div>
-                        <label class="toggle">
-                            <input type="checkbox" ${notificationSettings.offers ? 'checked' : ''} onchange="toggleNotification('offers')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <button class="btn-primary" onclick="closeModal('notificationSettingsModal')" style="margin-top: 16px;">Kapat</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function toggleNotification(type) {
-    try {
-        notificationSettings[type] = !notificationSettings[type];
-        localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
-        addNotification(notificationSettings[type] ? '✅ Bildirim açıldı' : '❌ Bildirim kapatıldı');
-    } catch (e) {
-        console.warn('Error toggling notification:', e);
-    }
+.file-upload-btn:hover {
+    background: #5568d3;
 }
 
-// Support System
-function showSupport() {
-    const modal = `
-        <div class="modal" id="supportModal">
-            <div class="modal-content">
-                <h2>💬 Canlı Destek</h2>
-                <div class="support-options">
-                    <button class="support-btn" onclick="openTelegramSupport()">
-                        <span class="support-icon">📱</span>
-                        <div class="support-info">
-                            <div class="support-title">Telegram Destek</div>
-                            <div class="support-subtitle">Telegram üzerinden yardım al</div>
-                        </div>
-                    </button>
-                    <button class="support-btn" onclick="showFAQ()">
-                        <span class="support-icon">❓</span>
-                        <div class="support-info">
-                            <div class="support-title">Sık Sorulan Sorular</div>
-                            <div class="support-subtitle">Hızlı cevaplar bul</div>
-                        </div>
-                    </button>
-                    <button class="support-btn" onclick="reportProblem()">
-                        <span class="support-icon">🐛</span>
-                        <div class="support-info">
-                            <div class="support-title">Sorun Bildir</div>
-                            <div class="support-subtitle">Hata veya öneri gönder</div>
-                        </div>
-                    </button>
-                </div>
-                <button class="btn-primary" onclick="closeModal('supportModal')" style="margin-top: 16px;">Kapat</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function openTelegramSupport() {
-    window.open('https://t.me/yoursupport', '_blank');
-}
-
-function showFAQ() {
-    closeModal('supportModal');
-    const modal = `
-        <div class="modal" id="faqModal">
-            <div class="modal-content">
-                <h2>❓ Sık Sorulan Sorular</h2>
-                <div class="faq-list">
-                    <div class="faq-item">
-                        <div class="faq-question">Nasıl hesap satarım?</div>
-                        <div class="faq-answer">"Hesaplarım" sekmesinden "Hesap Ekle" butonuna tıklayarak ilanını oluşturabilirsin.</div>
-                    </div>
-                    <div class="faq-item">
-                        <div class="faq-question">Ödeme nasıl yapılır?</div>
-                        <div class="faq-answer">Satıcıyla direkt iletişime geçerek ödeme detaylarını konuşabilirsiniz.</div>
-                    </div>
-                    <div class="faq-item">
-                        <div class="faq-question">Hesap güvenli mi?</div>
-                        <div class="faq-answer">Doğrulanmış satıcılardan alışveriş yapmanızı öneririz. ✓ işareti olan satıcılar güvenilirdir.</div>
-                    </div>
-                </div>
-                <button class="btn-primary" onclick="closeModal('faqModal')" style="margin-top: 16px;">Kapat</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function reportProblem() {
-    closeModal('supportModal');
-    const modal = `
-        <div class="modal" id="reportModal">
-            <div class="modal-content">
-                <h2>🐛 Sorun Bildir</h2>
-                <textarea id="reportText" class="input-field" placeholder="Sorunu veya önerini detaylı anlat..." rows="5"></textarea>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="submitReport()">Gönder</button>
-                    <button class="btn-secondary" onclick="closeModal('reportModal')">İptal</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function submitReport() {
-    const text = document.getElementById('reportText').value;
-    if (text.trim()) {
-        addNotification('✅ Raporun gönderildi! Teşekkürler.');
-        closeModal('reportModal');
-    } else {
-        alert('Lütfen bir açıklama yaz!');
-    }
+.id-preview {
+    margin-top: 12px;
+    min-height: 100px;
+    background: #1a1d29;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-// Update incrementViews to add to recently viewed
-const originalIncrementViews = incrementViews;
-incrementViews = function(accountId) {
-    originalIncrementViews(accountId);
-    addToRecentlyViewed(accountId);
-};
-
-// Update search to add to history
-const searchInput = document.getElementById('searchInput');
-if (searchInput) {
-    searchInput.addEventListener('change', (e) => {
-        if (e.target.value) {
-            addToSearchHistory(e.target.value);
-        }
-    });
-}
-
-
-// Verification System
-function showVerificationOptions() {
-    if (userProfile && userProfile.verified) {
-        addNotification('✅ Hesabın zaten doğrulanmış!');
-        return;
-    }
-    
-    const modal = `
-        <div class="modal" id="verificationModal">
-            <div class="modal-content" style="max-width: 500px;">
-                <h2>✓ Hesap Doğrulama</h2>
-                <p style="text-align: center; color: #8b8d98; margin-bottom: 24px;">
-                    Hesabını doğrulayarak güvenilir satıcı rozetini kazan ve daha fazla alıcıya ulaş!
-                </p>
-                
-                <div class="verification-methods">
-                    <button class="verification-method-btn" onclick="startIDVerification()">
-                        <div class="verification-icon">�</div>
-                        <div class="verification-info">
-                            <div class="verification-title">Kimlik Doğrulaması</div>
-                            <div class="verification-subtitle">Kimlik belgesi ile doğrula</div>
-                            <div class="verification-badge recommended">Önerilen</div>
-                        </div>
-                        <div class="verification-arrow">›</div>
-                    </button>
-                    
-                    <button class="verification-method-btn" onclick="startEmailVerification()">
-                        <div class="verification-icon">📧</div>
-                        <div class="verification-info">
-                            <div class="verification-title">E-posta Doğrulaması</div>
-                            <div class="verification-subtitle">E-posta adresine kod gönder</div>
-                        </div>
-                        <div class="verification-arrow">›</div>
-                    </button>
-                    
-                    <button class="verification-method-btn" onclick="startPaymentVerification()">
-                        <div class="verification-icon">�</div>
-                        <div class="verification-info">
-                            <div class="verification-title">Ödeme Doğrulaması</div>
-                            <div class="verification-subtitle">1 TL ile anında doğrula</div>
-                            <div class="verification-badge instant">Anında</div>
-                        </div>
-                        <div class="verification-arrow">›</div>
-                    </button>
-                </div>
-                
-                <button class="btn-secondary" onclick="closeModal('verificationModal')" style="margin-top: 16px;">İptal</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-// 1. Telegram Verification
-function startTelegramVerification() {
-    closeModal('verificationModal');
-    
-    try {
-        const verificationCode = Math.floor(100000 + Math.random() * 900000);
-        localStorage.setItem('telegramVerificationCode', verificationCode.toString());
-        
-        const modal = `
-        <div class="modal" id="telegramVerificationModal">
-            <div class="modal-content">
-                <h2>📱 Telegram Doğrulaması</h2>
-                
-                <div class="verification-steps">
-                    <div class="verification-step">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <div class="step-title">Telegram Botuna Git</div>
-                            <div class="step-description">Aşağıdaki butona tıklayarak destek botumuza git</div>
-                            <button class="btn-telegram" onclick="openVerificationBot()">
-                                📱 Telegram Botunu Aç
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="verification-step">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <div class="step-title">Doğrulama Kodunu Gönder</div>
-                            <div class="step-description">Bota aşağıdaki kodu gönder:</div>
-                            <div class="verification-code-display">
-                                <span class="code-text">${verificationCode}</span>
-                                <button class="code-copy-btn" onclick="copyVerificationCode('${verificationCode}')">📋</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="verification-step">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <div class="step-title">Onay Kodunu Gir</div>
-                            <div class="step-description">Bot sana bir onay kodu gönderecek, buraya gir:</div>
-                            <input type="text" id="telegramConfirmCode" class="verification-input" placeholder="6 haneli kod" maxlength="6">
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 10px; margin-top: 24px;">
-                    <button class="btn-primary" onclick="confirmTelegramVerification()">✓ Doğrula</button>
-                    <button class="btn-secondary" onclick="closeModal('telegramVerificationModal')">İptal</button>
-                </div>
-            </div>
-        </div>
-    `;
-        document.body.insertAdjacentHTML('beforeend', modal);
-    } catch (e) {
-        console.warn('Error starting telegram verification:', e);
-        alert('❌ Hata oluştu. Lütfen tekrar dene.');
-    }
+.verification-note {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #ffc107;
+    margin-top: 16px;
 }
 
-function openVerificationBot() {
-    openTelegramBot(userProfile.telegram);
+.payment-info-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 24px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 24px;
 }
 
-function copyVerificationCode(code) {
-    navigator.clipboard.writeText(code);
-    addNotification('📋 Kod kopyalandı!');
+.payment-amount {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 8px;
 }
 
-async function confirmTelegramVerification() {
-    const enteredCode = document.getElementById('telegramConfirmCode').value;
-    
-    if (enteredCode.length !== 6) {
-        alert('❌ Lütfen 6 haneli onay kodunu gir!');
-        return;
-    }
-    
-    try {
-        // Backend'e doğrulama isteği gönder
-        const response = await fetch('http://localhost:3000/api/verify-telegram', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUserId || userProfile.telegram,
-                code: enteredCode
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            userProfile.verified = true;
-            userProfile.verificationMethod = 'telegram';
-            userProfile.verifiedAt = Date.now();
-            localStorage.setItem('userProfile', JSON.stringify(userProfile));
-            
-            closeModal('telegramVerificationModal');
-            addNotification('🎉 Tebrikler! Hesabın doğrulandı!');
-            renderProfile();
-        } else {
-            alert('❌ Geçersiz veya süresi dolmuş kod! Lütfen tekrar dene.');
-        }
-    } catch (error) {
-        console.error('Verification error:', error);
-        alert('❌ Doğrulama sırasında bir hata oluştu. Lütfen tekrar dene.');
-    }
+.payment-description {
+    font-size: 16px;
+    margin-bottom: 4px;
 }
 
-// 2. Email Verification
-function startEmailVerification() {
-    closeModal('verificationModal');
-    
-    const modal = `
-        <div class="modal" id="emailVerificationModal">
-            <div class="modal-content">
-                <h2>📧 E-posta Doğrulaması</h2>
-                
-                <div class="verification-steps">
-                    <div class="verification-step">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <div class="step-title">E-posta Adresini Gir</div>
-                            <input type="email" id="verificationEmail" class="verification-input" placeholder="ornek@email.com">
-                        </div>
-                    </div>
-                    
-                    <div class="verification-step">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <div class="step-title">Kod Gönder</div>
-                            <button class="btn-primary" onclick="sendEmailVerificationCode()" style="width: 100%;">
-                                📧 Doğrulama Kodu Gönder
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="verification-step" id="emailCodeStep" style="display: none;">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <div class="step-title">Kodu Gir</div>
-                            <div class="step-description">E-postana gönderilen 6 haneli kodu gir:</div>
-                            <input type="text" id="emailConfirmCode" class="verification-input" placeholder="6 haneli kod" maxlength="6">
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 10px; margin-top: 24px;">
-                    <button class="btn-primary" onclick="confirmEmailVerification()" id="emailConfirmBtn" style="display: none;">✓ Doğrula</button>
-                    <button class="btn-secondary" onclick="closeModal('emailVerificationModal')">İptal</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function sendEmailVerificationCode() {
-    const email = document.getElementById('verificationEmail').value;
-    
-    if (!email || !email.includes('@')) {
-        alert('❌ Lütfen geçerli bir e-posta adresi gir!');
-        return;
-    }
-    
-    try {
-        const code = Math.floor(100000 + Math.random() * 900000);
-        localStorage.setItem('emailVerificationCode', code.toString());
-        localStorage.setItem('verificationEmail', email);
-        
-        // Simülasyon - gerçekte e-posta gönderilecek
-        addNotification(`📧 Doğrulama kodu gönderildi! (Test: ${code})`);
-        
-        document.getElementById('emailCodeStep').style.display = 'flex';
-        document.getElementById('emailConfirmBtn').style.display = 'block';
-    } catch (e) {
-        console.warn('Error sending email verification:', e);
-        alert('❌ Hata oluştu. Lütfen tekrar dene.');
-    }
+.payment-note {
+    font-size: 12px;
+    opacity: 0.8;
 }
 
-function confirmEmailVerification() {
-    try {
-        const enteredCode = document.getElementById('emailConfirmCode').value;
-        const savedCode = localStorage.getItem('emailVerificationCode');
-        
-        if (enteredCode === savedCode) {
-            userProfile.verified = true;
-            userProfile.verificationMethod = 'email';
-            userProfile.verifiedAt = Date.now();
-            userProfile.email = localStorage.getItem('verificationEmail');
-            localStorage.setItem('userProfile', JSON.stringify(userProfile));
-            
-            closeModal('emailVerificationModal');
-            addNotification('🎉 Tebrikler! Hesabın doğrulandı!');
-            renderProfile();
-        } else {
-            alert('❌ Hatalı kod! Lütfen tekrar dene.');
-        }
-    } catch (e) {
-        console.warn('Error confirming email verification:', e);
-        alert('❌ Hata oluştu. Lütfen tekrar dene.');
-    }
+.payment-methods {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 12px;
 }
 
-// 3. ID Verification
-function startIDVerification() {
-    closeModal('verificationModal');
-    
-    const modal = `
-        <div class="modal" id="idVerificationModal">
-            <div class="modal-content">
-                <h2>📸 Kimlik Doğrulaması</h2>
-                
-                <div class="verification-steps">
-                    <div class="verification-step">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <div class="step-title">Kimlik Belgesinin Ön Yüzü</div>
-                            <div class="step-description">Kimlik kartı veya ehliyet ön yüzünü yükle</div>
-                            <label class="file-upload-btn">
-                                📷 Fotoğraf Seç
-                                <input type="file" accept="image/*" onchange="previewIDImage(event, 'front')" style="display: none;">
-                            </label>
-                            <div id="idFrontPreview" class="id-preview"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="verification-step">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <div class="step-title">Kimlik Belgesinin Arka Yüzü</div>
-                            <div class="step-description">Kimlik kartı veya ehliyet arka yüzünü yükle</div>
-                            <label class="file-upload-btn">
-                                📷 Fotoğraf Seç
-                                <input type="file" accept="image/*" onchange="previewIDImage(event, 'back')" style="display: none;">
-                            </label>
-                            <div id="idBackPreview" class="id-preview"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="verification-step">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <div class="step-title">Selfie</div>
-                            <div class="step-description">Kimliğini tutarken bir selfie çek</div>
-                            <label class="file-upload-btn">
-                                🤳 Selfie Çek
-                                <input type="file" accept="image/*" capture="user" onchange="previewIDImage(event, 'selfie')" style="display: none;">
-                            </label>
-                            <div id="idSelfiePreview" class="id-preview"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="verification-note">
-                    <strong>⚠️ Önemli:</strong> Kimlik bilgilerin güvende tutulacak ve sadece doğrulama için kullanılacaktır.
-                </div>
-                
-                <div style="display: flex; gap: 10px; margin-top: 24px;">
-                    <button class="btn-primary" onclick="submitIDVerification()">📤 Gönder</button>
-                    <button class="btn-secondary" onclick="closeModal('idVerificationModal')">İptal</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-let idImages = { front: null, back: null, selfie: null };
-
-function previewIDImage(event, type) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        idImages[type] = e.target.result;
-        const preview = document.getElementById(`id${type.charAt(0).toUpperCase() + type.slice(1)}Preview`);
-        preview.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; border-radius: 8px;">`;
-    };
-    reader.readAsDataURL(file);
-}
-
-async function submitIDVerification() {
-    if (!idImages.front || !idImages.back || !idImages.selfie) {
-        alert('❌ Lütfen tüm fotoğrafları yükle!');
-        return;
-    }
-    
-    try {
-        // Backend'e kimlik doğrulama isteği gönder
-        const response = await fetch('http://localhost:3000/api/submit-id-verification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUserId || userProfile.telegram,
-                userName: userProfile.firstName + ' ' + (userProfile.lastName || ''),
-                images: idImages,
-                submittedAt: Date.now()
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Eski red durumunu temizle
-            userProfile.verificationPending = true;
-            userProfile.verificationMethod = 'id';
-            userProfile.verificationId = data.verificationId;
-            userProfile.verificationSubmittedAt = Date.now();
-            userProfile.verificationRejected = false;
-            delete userProfile.rejectionReason;
-            delete userProfile.rejectedAt;
-            localStorage.setItem('userProfile', JSON.stringify(userProfile));
-            
-            closeModal('idVerificationModal');
-            addNotification('📤 Kimlik doğrulama başvurun gönderildi! Admin onayı bekleniyor...');
-            renderProfile();
-        } else {
-            alert('❌ Başvuru gönderilemedi. Lütfen tekrar dene.');
-        }
-    } catch (error) {
-        console.error('ID verification error:', error);
-        
-        // Hata durumunda simülasyon moduna geç
-        userProfile.verificationPending = true;
-        userProfile.verificationMethod = 'id';
-        userProfile.idImages = idImages;
-        userProfile.verificationSubmittedAt = Date.now();
-        userProfile.verificationRejected = false;
-        delete userProfile.rejectionReason;
-        delete userProfile.rejectedAt;
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        
-        closeModal('idVerificationModal');
-        addNotification('📤 Kimlik doğrulama başvurun gönderildi! Admin onayı bekleniyor...');
-        renderProfile();
-    }
+.payment-method-btn {
+    background: #23263a;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    padding: 16px 12px;
+    border-radius: 12px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
-// 4. Payment Verification
-function startPaymentVerification() {
-    closeModal('verificationModal');
-    
-    const modal = `
-        <div class="modal" id="paymentVerificationModal">
-            <div class="modal-content">
-                <h2>💳 Ödeme Doğrulaması</h2>
-                
-                <div class="payment-info-box">
-                    <div class="payment-amount">1 TL</div>
-                    <div class="payment-description">Tek seferlik doğrulama ücreti</div>
-                    <div class="payment-note">Bu ücret hesabına puan olarak yüklenecek</div>
-                </div>
-                
-                <div class="verification-steps">
-                    <div class="verification-step">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <div class="step-title">Ödeme Yöntemi Seç</div>
-                            <div class="payment-methods">
-                                <button class="payment-method-btn" onclick="selectPaymentMethod('card')">
-                                    <span>💳</span> Kredi Kartı
-                                </button>
-                                <button class="payment-method-btn" onclick="selectPaymentMethod('crypto')">
-                                    <span>₿</span> Kripto Para
-                                </button>
-                                <button class="payment-method-btn" onclick="selectPaymentMethod('papara')">
-                                    <span>💰</span> Papara
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="paymentFormContainer"></div>
-                
-                <button class="btn-secondary" onclick="closeModal('paymentVerificationModal')" style="margin-top: 16px;">İptal</button>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function selectPaymentMethod(method) {
-    const container = document.getElementById('paymentFormContainer');
-    
-    if (method === 'card') {
-        container.innerHTML = `
-            <div class="payment-form">
-                <h3>💳 Kart Bilgileri</h3>
-                <div id="card-element" style="background: #1a1d29; padding: 14px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.1);"></div>
-                <div id="card-errors" style="color: #ff3b30; font-size: 13px; margin-top: 8px;"></div>
-                <button class="btn-primary" onclick="processStripePayment()" style="width: 100%; margin-top: 16px;">
-                    💳 1 TL Öde ve Doğrula
-                </button>
-            </div>
-        `;
-        
-        // Create Stripe card element
-        if (typeof createCardElement === 'function') {
-            setTimeout(() => {
-                const cardElement = createCardElement('card-element');
-                if (cardElement) {
-                    cardElement.on('change', (event) => {
-                        const displayError = document.getElementById('card-errors');
-                        if (event.error) {
-                            displayError.textContent = event.error.message;
-                        } else {
-                            displayError.textContent = '';
-                        }
-                    });
-                    window.stripeCardElement = cardElement;
-                }
-            }, 100);
-        }
-    } else if (method === 'crypto') {
-        container.innerHTML = `
-            <div class="payment-form">
-                <h3>₿ Kripto Para ile Ödeme</h3>
-                <p style="text-align: center; color: #8b8d98;">Aşağıdaki adrese 1 TL değerinde kripto para gönder:</p>
-                <div class="crypto-address">
-                    <code>0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb</code>
-                    <button class="code-copy-btn" onclick="copyText('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb')">📋</button>
-                </div>
-                <button class="btn-primary" onclick="processPayment('crypto')" style="width: 100%; margin-top: 16px;">
-                    ✓ Ödemeyi Yaptım
-                </button>
-            </div>
-        `;
-    } else if (method === 'papara') {
-        container.innerHTML = `
-            <div class="payment-form">
-                <h3>💰 Papara ile Ödeme</h3>
-                <p style="text-align: center; color: #8b8d98;">Papara numarasına 1 TL gönder:</p>
-                <div class="crypto-address">
-                    <code>1234567890</code>
-                    <button class="code-copy-btn" onclick="copyText('1234567890')">📋</button>
-                </div>
-                <input type="text" class="verification-input" placeholder="Gönderen Papara Numarası" style="margin-top: 16px;">
-                <button class="btn-primary" onclick="processPayment('papara')" style="width: 100%; margin-top: 16px;">
-                    ✓ Ödemeyi Yaptım
-                </button>
-            </div>
-        `;
-    }
+.payment-method-btn:hover {
+    border-color: #667eea;
+    background: #2a2d3e;
 }
 
-async function processStripePayment() {
-    if (!window.stripeCardElement) {
-        alert('❌ Kart bilgileri yüklenemedi!');
-        return;
-    }
-    
-    addNotification('⏳ Ödeme işleniyor...');
-    
-    try {
-        // Create payment intent
-        if (typeof createVerificationPayment === 'function') {
-            const clientSecret = await createVerificationPayment(currentUserId, userProfile.email || '');
-            
-            if (clientSecret) {
-                const result = await processCardPayment(window.stripeCardElement, clientSecret);
-                
-                if (result.success) {
-                    userProfile.verified = true;
-                    userProfile.verificationMethod = 'payment';
-                    userProfile.verifiedAt = Date.now();
-                    gameState.points += 100;
-                    localStorage.setItem('userProfile', JSON.stringify(userProfile));
-                    saveGame();
-                    
-                    closeModal('paymentVerificationModal');
-                    addNotification('🎉 Ödeme başarılı! Hesabın doğrulandı ve 100 puan kazandın!');
-                    renderProfile();
-                } else {
-                    alert('❌ Ödeme başarısız: ' + result.error);
-                }
-            }
-        } else {
-            // Fallback to simulation
-            processPayment('card');
-        }
-    } catch (error) {
-        console.error('Payment error:', error);
-        alert('❌ Ödeme hatası: ' + error.message);
-    }
+.payment-method-btn span {
+    font-size: 32px;
 }
 
-function copyText(text) {
-    navigator.clipboard.writeText(text);
-    addNotification('📋 Kopyalandı!');
+.payment-form {
+    background: #23263a;
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 20px;
 }
 
-function processPayment(method) {
-    // Simülasyon - gerçekte ödeme işlemi yapılacak
-    addNotification('⏳ Ödeme işleniyor...');
-    
-    setTimeout(() => {
-        userProfile.verified = true;
-        userProfile.verificationMethod = 'payment';
-        userProfile.verifiedAt = Date.now();
-        gameState.points += 100; // 1 TL = 100 puan
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        saveGame();
-        
-        closeModal('paymentVerificationModal');
-        addNotification('🎉 Ödeme başarılı! Hesabın doğrulandı ve 100 puan kazandın!');
-        renderProfile();
-    }, 2000);
-}
-
-
-// ============================================
-// ADMIN: ID VERIFICATION APPROVALS
-// ============================================
-
-async function showIDVerificationApprovals() {
-    try {
-        // Backend'den bekleyen doğrulama taleplerini al
-        const response = await fetch('http://localhost:3000/api/get-pending-verifications');
-        const data = await response.json();
-        
-        const pendingVerifications = data.verifications || [];
-        
-        const modal = `
-            <div class="modal admin-modal" id="idApprovalsModal">
-                <div class="admin-panel">
-                    <div class="admin-header">
-                        <h2>👑 Kimlik Doğrulama Onayları</h2>
-                        <button class="close-btn" onclick="closeModal('idApprovalsModal')">✕</button>
-                    </div>
-                    <div class="admin-content">
-                        ${pendingVerifications.length === 0 ? `
-                            <div style="text-align: center; padding: 40px; color: #8b8d98;">
-                                <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-                                <div style="font-size: 18px; margin-bottom: 8px;">Bekleyen Talep Yok</div>
-                                <div style="font-size: 14px;">Tüm kimlik doğrulama talepleri işlenmiş.</div>
-                            </div>
-                        ` : pendingVerifications.map(verification => `
-                            <div class="verification-summary-card" onclick="showVerificationDetail('${verification.id}')" id="verification-${verification.id}">
-                                <div class="verification-summary-header">
-                                    <div class="verification-user-info">
-                                        <div class="verification-avatar">👤</div>
-                                        <div>
-                                            <div class="verification-name">${verification.userName}</div>
-                                            <div class="verification-date">
-                                                ${new Date(verification.submittedAt).toLocaleString('tr-TR')}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="verification-status-badge pending">⏳ Bekliyor</div>
-                                </div>
-                                <div class="verification-summary-footer">
-                                    <span style="color: #8b8d98; font-size: 12px;">Detayları görmek için tıkla →</span>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modal);
-        
-        // Store verifications data for detail view
-        window.pendingVerifications = pendingVerifications;
-    } catch (error) {
-        console.error('Error loading verifications:', error);
-        alert('❌ Doğrulama talepleri yüklenemedi.');
-    }
+.payment-form h3 {
+    font-size: 16px;
+    margin-bottom: 16px;
+    text-align: center;
 }
 
-function showVerificationDetail(verificationId) {
-    const verification = window.pendingVerifications.find(v => v.id === verificationId);
-    if (!verification) return;
-    
-    const modal = `
-        <div class="modal" id="verificationDetailModal" style="z-index: 10001;">
-            <div class="modal-content" style="max-width: 800px;">
-                <div class="verification-detail-header">
-                    <h2>📸 Kimlik Doğrulama Detayı</h2>
-                    <button class="close-btn" onclick="closeModal('verificationDetailModal')">✕</button>
-                </div>
-                
-                <div class="verification-detail-user">
-                    <div class="verification-avatar" style="width: 64px; height: 64px; font-size: 32px;">👤</div>
-                    <div>
-                        <div class="verification-name" style="font-size: 20px;">${verification.userName}</div>
-                        <div class="verification-date">${new Date(verification.submittedAt).toLocaleString('tr-TR')}</div>
-                    </div>
-                </div>
-                
-                <div class="verification-images">
-                    <div class="verification-image-item">
-                        <div class="verification-image-label">Ön Yüz</div>
-                        <img src="${verification.images.front}" onclick="viewFullImage('${verification.images.front}')" class="verification-img">
-                    </div>
-                    <div class="verification-image-item">
-                        <div class="verification-image-label">Arka Yüz</div>
-                        <img src="${verification.images.back}" onclick="viewFullImage('${verification.images.back}')" class="verification-img">
-                    </div>
-                    <div class="verification-image-item">
-                        <div class="verification-image-label">Selfie</div>
-                        <img src="${verification.images.selfie}" onclick="viewFullImage('${verification.images.selfie}')" class="verification-img">
-                    </div>
-                </div>
-                
-                <div class="verification-actions">
-                    <button class="btn-approve" onclick="approveVerification('${verification.id}', '${verification.userId}')">
-                        ✅ Onayla
-                    </button>
-                    <button class="btn-reject" onclick="showRejectReason('${verification.id}', '${verification.userId}')">
-                        ❌ Reddet
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-function viewFullImage(imageSrc) {
-    const modal = `
-        <div class="modal" id="imageViewModal" onclick="closeModal('imageViewModal')" style="background: rgba(0,0,0,0.95);">
-            <div class="modal-content" style="max-width: 90vw; max-height: 90vh; background: transparent; padding: 0;">
-                <img src="${imageSrc}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 12px;">
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-async function approveVerification(verificationId, userId) {
-    if (!confirm('Bu kimlik doğrulamasını onaylamak istediğinden emin misin?')) return;
-    
-    try {
-        const response = await fetch('http://localhost:3000/api/approve-id-verification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                verificationId: verificationId,
-                userId: userId,
-                approved: true
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Modalları kapat
-            closeModal('verificationDetailModal');
-            
-            // Kartı kaldır
-            const card = document.getElementById(`verification-${verificationId}`);
-            if (card) {
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.9)';
-                setTimeout(() => card.remove(), 300);
-            }
-            
-            addNotification('✅ Kimlik doğrulaması onaylandı!');
-            
-            // Eğer onaylanan kullanıcı şu anki kullanıcıysa, profilini güncelle
-            if (userId === (currentUserId || userProfile.telegram).toString()) {
-                userProfile.verified = true;
-                userProfile.verificationPending = false;
-                userProfile.verifiedAt = Date.now();
-                localStorage.setItem('userProfile', JSON.stringify(userProfile));
-                renderProfile();
-            }
-            
-            // Eğer başka talep yoksa ana modalı kapat
-            setTimeout(() => {
-                const remainingCards = document.querySelectorAll('.verification-summary-card');
-                if (remainingCards.length === 0) {
-                    closeModal('idApprovalsModal');
-                }
-            }, 500);
-        } else {
-            alert('❌ Onaylama işlemi başarısız oldu.');
-        }
-    } catch (error) {
-        console.error('Approval error:', error);
-        alert('❌ Bir hata oluştu. Lütfen tekrar dene.');
-    }
+.crypto-address {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #1a1d29;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 16px 0;
 }
 
-function showRejectReason(verificationId, userId) {
-    const modal = `
-        <div class="modal" id="rejectReasonModal" style="z-index: 10002;">
-            <div class="modal-content" style="max-width: 500px;">
-                <h2>❌ Reddetme Sebebi</h2>
-                <p style="color: #8b8d98; margin-bottom: 20px;">Lütfen kimlik doğrulamasını neden reddettiğinizi belirtin:</p>
-                
-                <textarea id="rejectReasonText" class="input-field" placeholder="Reddetme sebebini yaz..." style="min-height: 120px; resize: vertical;"></textarea>
-                
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="btn-reject" onclick="confirmRejectVerification('${verificationId}', '${userId}')">
-                        ❌ Reddet
-                    </button>
-                    <button class="btn-secondary" onclick="closeModal('rejectReasonModal')">
-                        İptal
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modal);
-}
-
-async function confirmRejectVerification(verificationId, userId) {
-    const reason = document.getElementById('rejectReasonText').value.trim();
-    
-    if (!reason) {
-        alert('❌ Lütfen reddetme sebebini yazın!');
-        return;
+.crypto-address code {
+    flex: 1;
+    font-size: 13px;
+    color: #667eea;
+    word-break: break-all;
+}
+
+.btn-verify {
+    background: #4caf50;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-verify:hover {
+    background: #45a049;
+}
+
+
+/* ============================================
+   ID VERIFICATION APPROVALS (ADMIN)
+   ============================================ */
+
+.verification-summary-card {
+    background: linear-gradient(135deg, #1e1f26 0%, #2a2b35 100%);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.verification-summary-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(102, 126, 234, 0.5);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+}
+
+.verification-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.verification-summary-footer {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: right;
+}
+
+.verification-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.verification-detail-user {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+.verification-card {
+    background: linear-gradient(135deg, #1e1f26 0%, #2a2b35 100%);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.verification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.verification-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.verification-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.verification-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.verification-date {
+    font-size: 12px;
+    color: #8b8d98;
+}
+
+.verification-status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.verification-status-badge.pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.verification-images {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.verification-image-item {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.verification-image-label {
+    padding: 8px;
+    font-size: 12px;
+    color: #8b8d98;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.verification-img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.verification-img:hover {
+    transform: scale(1.05);
+}
+
+.verification-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-approve,
+.btn-reject {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-approve {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+}
+
+.btn-approve:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(17, 153, 142, 0.4);
+}
+
+.btn-reject {
+    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    color: white;
+}
+
+.btn-reject:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(235, 51, 73, 0.4);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .verification-images {
+        grid-template-columns: 1fr;
     }
     
-    try {
-        const response = await fetch('http://localhost:3000/api/approve-id-verification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                verificationId: verificationId,
-                userId: userId,
-                approved: false,
-                reason: reason
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Modalları kapat
-            closeModal('rejectReasonModal');
-            closeModal('verificationDetailModal');
-            
-            // Kartı kaldır
-            const card = document.getElementById(`verification-${verificationId}`);
-            if (card) {
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.9)';
-                setTimeout(() => card.remove(), 300);
-            }
-            
-            addNotification('❌ Kimlik doğrulaması reddedildi.');
-            
-            // Eğer reddedilen kullanıcı şu anki kullanıcıysa, profilini güncelle
-            if (userId === (currentUserId || userProfile.telegram).toString()) {
-                userProfile.verified = false;
-                userProfile.verificationPending = false;
-                userProfile.verificationRejected = true;
-                userProfile.rejectionReason = reason;
-                userProfile.rejectedAt = Date.now();
-                localStorage.setItem('userProfile', JSON.stringify(userProfile));
-                renderProfile();
-            }
-            
-            // Eğer başka talep yoksa ana modalı kapat
-            setTimeout(() => {
-                const remainingCards = document.querySelectorAll('.verification-summary-card');
-                if (remainingCards.length === 0) {
-                    closeModal('idApprovalsModal');
-                }
-            }, 500);
-        } else {
-            alert('❌ Reddetme işlemi başarısız oldu.');
-        }
-    } catch (error) {
-        console.error('Rejection error:', error);
-        alert('❌ Bir hata oluştu. Lütfen tekrar dene.');
+    .verification-img {
+        height: 200px;
     }
 }
+
 
-async function rejectVerification(verificationId, userId) {
-    showRejectReason(verificationId, userId);
+/* ========== SEPET STİLİ ========== */
+.cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff4757;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
 }
 
+.cart-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
 
-// Test için localStorage temizleme fonksiyonu (geliştirme aşamasında kullan)
-function resetVerificationStatus() {
-    if (userProfile) {
-        userProfile.verified = false;
-        userProfile.verificationPending = false;
-        userProfile.verificationMethod = null;
-        userProfile.verifiedAt = null;
-        userProfile.verificationId = null;
-        delete userProfile.idImages;
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        renderProfile();
-        addNotification('🔄 Doğrulama durumu sıfırlandı!');
-    }
+.cart-item {
+    background: #1a1d29;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-// Console'dan çağırmak için: resetVerificationStatus()
+.cart-item-info {
+    flex: 1;
+}
 
+.cart-item-tier {
+    font-size: 15px;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 4px;
+}
 
-// Close registration form
-function closeRegistrationForm() {
-    const regForm = document.getElementById('registrationForm');
-    if (regForm) {
-        regForm.remove();
-    }
+.cart-item-seller {
+    font-size: 13px;
+    color: #8b8d98;
+    margin-bottom: 4px;
+}
+
+.cart-item-price {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffd700;
+}
+
+.cart-item-remove {
+    background: #ff4757;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.cart-item-remove:hover {
+    background: #ff3838;
+}
+
+.cart-summary {
+    background: #23263a;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.cart-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
 }
